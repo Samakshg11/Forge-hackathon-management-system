@@ -1,0 +1,161 @@
+.story-beat{
+
+width:100%;
+
+height:100vh;
+
+display:flex;
+
+align-items:center;
+
+pointer-events:none;
+
+position:relative;
+
+z-index:10;
+
+}
+
+.story-beat.left{
+
+justify-content:flex-start;
+
+padding-left:8vw;
+
+}
+
+.story-beat.right{
+
+justify-content:flex-end;
+
+padding-right:8vw;
+
+}
+
+.story-beat.center{
+
+justify-content:center;
+
+text-align:center;
+
+}
+
+.story-beat-content{
+
+max-width:520px;
+
+}
+
+.story-subtitle{
+
+font-size:14px;
+
+letter-spacing:4px;
+
+text-transform:uppercase;
+
+opacity:.7;
+
+margin-bottom:18px;
+
+}
+
+.story-title{
+
+font-size:72px;
+
+font-weight:800;
+
+line-height:1;
+
+margin-bottom:24px;
+
+}
+
+.story-description{
+
+font-size:20px;
+
+line-height:1.7;
+
+opacity:.8;
+
+}
+
+/* ===========================
+   STICKY STAGE
+=========================== */
+
+.story-stage{
+
+position:sticky;
+
+top:0;
+
+width:100%;
+
+height:100vh;
+
+overflow:hidden;
+
+background:#09090b;
+
+z-index:1;
+
+}
+
+/* ===========================
+   CANVAS
+=========================== */
+
+.story-canvas{
+
+position:absolute;
+
+inset:0;
+
+width:100%;
+
+height:100%;
+
+display:block;
+
+}
+
+/* ===========================
+   TOP LIGHT
+=========================== */
+
+.story-gradient{
+
+position:absolute;
+
+inset:0;
+
+pointer-events:none;
+
+background:
+
+radial-gradient(circle at 50% 25%,
+rgba(92,225,230,.18),
+transparent 60%);
+
+}
+
+/* ===========================
+   EDGE VIGNETTE
+=========================== */
+
+.story-vignette{
+
+position:absolute;
+
+inset:0;
+
+pointer-events:none;
+
+box-shadow:
+
+inset 0 0 220px rgba(0,0,0,.75);
+
+}

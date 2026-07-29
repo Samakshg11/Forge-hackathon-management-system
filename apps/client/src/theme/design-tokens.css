@@ -1,0 +1,660 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── FORGE Design System Tokens (Document 1 §6.2) ── */
+
+:root, .dark {
+  --bg-canvas: #0A0A0B;
+  --bg-surface: #131316;
+  --bg-surface-raised: #1C1C21;
+  --border-subtle: #26262B;
+  --text-primary: #F4F4F5;
+  --text-secondary: #A1A1AA;
+
+  --accent-primary: #FF5A1F; /* Forge Orange */
+  --accent-primary-hover: #FF7A45;
+  --accent-secondary: #5B8CFF; /* Signal Blue */
+
+  --status-success: #3DDC84;
+  --status-warning: #FFC53D;
+  --status-danger: #FF5C5C;
+
+  --role-admin: #C084FC;
+  --role-organizer: #FF5A1F;
+  --role-judge: #5B8CFF;
+  --role-participant: #3DDC84;
+}
+
+[data-theme="light"] {
+  --bg-canvas: #FAFAFA;
+  --bg-surface: #FFFFFF;
+  --bg-surface-raised: #F4F4F5;
+  --border-subtle: #E4E4E7;
+  --text-primary: #18181B;
+  --text-secondary: #71717A;
+
+  --accent-primary: #FF5A1F;
+  --accent-primary-hover: #E64E14;
+  --accent-secondary: #5B8CFF;
+
+  --status-success: #1DA65C;
+  --status-warning: #B8860B;
+  --status-danger: #D93636;
+}
+
+/* Glassmorphism class (Document 1 §6.4 recipe) */
+.glass-panel {
+  background: rgba(19, 19, 22, 0.65);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Artifact landing page */
+.forge-artifact-page {
+  background: #0E1116;
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+.artifact-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 68px;
+  padding: 0 clamp(18px, 4vw, 56px);
+  background: rgba(14, 17, 22, 0);
+  border-bottom: 1px solid transparent;
+  transition: background 220ms ease, border-color 220ms ease, backdrop-filter 220ms ease;
+}
+
+.artifact-nav.is-scrolled {
+  background: rgba(14, 17, 22, 0.66);
+  border-color: rgba(244, 244, 245, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.artifact-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.artifact-brand span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--accent-primary);
+  color: #fff;
+  letter-spacing: 0;
+  box-shadow: 0 0 28px rgba(255, 90, 31, 0.34);
+}
+
+.artifact-nav-links,
+.artifact-nav-actions,
+.artifact-hero-actions {
+  display: flex;
+  align-items: center;
+}
+
+.artifact-nav-links {
+  gap: clamp(14px, 3vw, 34px);
+  color: rgba(244, 244, 245, 0.66);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.artifact-nav-links a,
+.artifact-link-button {
+  color: rgba(244, 244, 245, 0.72);
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.artifact-nav-links a:hover,
+.artifact-link-button:hover {
+  color: var(--text-primary);
+}
+
+.artifact-nav-actions {
+  gap: 8px;
+}
+
+.artifact-link-button,
+.artifact-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.artifact-link-button {
+  border: 1px solid rgba(244, 244, 245, 0.13);
+  background: rgba(244, 244, 245, 0.04);
+}
+
+.artifact-link-button:hover {
+  border-color: rgba(244, 244, 245, 0.28);
+  background: rgba(244, 244, 245, 0.08);
+}
+
+.artifact-primary-button {
+  border: 1px solid rgba(255, 122, 69, 0.45);
+  background: var(--accent-primary);
+  color: #fff;
+  box-shadow: 0 0 30px rgba(255, 90, 31, 0.22);
+}
+
+.artifact-primary-button:hover {
+  background: var(--accent-primary-hover);
+}
+
+.artifact-link-button--large,
+.artifact-primary-button--large {
+  min-height: 46px;
+  padding: 0 18px;
+}
+
+.artifact-scroll-story {
+  height: 520vh;
+  background: #0E1116;
+}
+
+.artifact-sticky-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #0E1116;
+}
+
+.artifact-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #0E1116;
+}
+
+.artifact-story-copy {
+  position: absolute;
+  left: clamp(20px, 6vw, 84px);
+  z-index: 2;
+  max-width: min(580px, calc(100vw - 40px));
+  pointer-events: none;
+  text-shadow: 0 1px 24px rgba(14, 17, 22, 0.9);
+  /* GSAP takes over opacity/visibility/transform via autoAlpha once its
+     ScrollTrigger context mounts; this just prevents a flash of stacked,
+     fully-visible copy on the very first paint before that effect runs. */
+  visibility: hidden;
+  opacity: 0;
+}
+
+.artifact-story-copy--intro {
+  top: clamp(92px, 16vh, 154px);
+}
+
+.artifact-story-copy--intro .artifact-hero-actions {
+  pointer-events: auto;
+}
+
+.artifact-story-copy--middle {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.artifact-story-copy--left {
+  text-align: left;
+}
+
+.artifact-story-copy--right {
+  left: auto;
+  right: clamp(20px, 6vw, 84px);
+  text-align: right;
+}
+
+.artifact-story-copy--right p:not(.artifact-eyebrow) {
+  margin-left: auto;
+}
+
+.artifact-story-copy--end {
+  right: clamp(20px, 6vw, 84px);
+  left: auto;
+  bottom: clamp(92px, 13vh, 142px);
+  text-align: right;
+}
+
+.artifact-story-copy--final {
+  left: 50%;
+  bottom: clamp(72px, 12vh, 120px);
+  transform: translateX(-50%);
+  max-width: min(760px, calc(100vw - 40px));
+  text-align: center;
+}
+
+.artifact-story-copy--final .artifact-hero-actions {
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.artifact-scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(20px, 4vh, 36px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  color: rgba(245, 248, 251, 0.5);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: var(--cue-opacity, 1);
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.artifact-scroll-cue span {
+  width: 1px;
+  height: 30px;
+  background: linear-gradient(180deg, rgba(245, 248, 251, 0.7), rgba(245, 248, 251, 0));
+  animation: artifact-scroll-cue-drift 1.8s ease-in-out infinite;
+}
+
+@keyframes artifact-scroll-cue-drift {
+  0%, 100% { transform: translateY(-4px); opacity: 0.4; }
+  50% { transform: translateY(6px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artifact-scroll-cue span {
+    animation: none;
+  }
+}
+
+.artifact-eyebrow {
+  margin: 0 0 14px;
+  color: #6fc8ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.artifact-story-copy h1,
+.artifact-story-copy h2,
+.artifact-section h2,
+.artifact-final-panel h2 {
+  margin: 0;
+  color: #f5f8fb;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+.artifact-story-copy h1 {
+  max-width: 760px;
+  font-size: clamp(3.15rem, 8.8vw, 8.5rem);
+  font-weight: 850;
+  line-height: 0.9;
+}
+
+.artifact-story-copy h2,
+.artifact-section h2,
+.artifact-final-panel h2 {
+  font-size: clamp(2.25rem, 5.8vw, 6rem);
+  font-weight: 820;
+  line-height: 0.96;
+}
+
+.artifact-story-copy p:not(.artifact-eyebrow),
+.artifact-section-heading > p:not(.artifact-eyebrow),
+.artifact-final-panel > p:not(.artifact-eyebrow) {
+  margin: 18px 0 0;
+  max-width: 560px;
+  color: rgba(245, 248, 251, 0.68);
+  font-size: clamp(1rem, 1.5vw, 1.16rem);
+  line-height: 1.7;
+}
+
+.artifact-hero-actions {
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+  pointer-events: auto;
+}
+
+.artifact-loader {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  z-index: 3;
+  transform: translateX(-50%);
+  color: rgba(245, 248, 251, 0.58);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.artifact-progress {
+  position: absolute;
+  right: clamp(18px, 3vw, 44px);
+  bottom: clamp(20px, 4vh, 36px);
+  z-index: 2;
+  width: clamp(120px, 16vw, 220px);
+  height: 2px;
+  overflow: hidden;
+  background: rgba(245, 248, 251, 0.16);
+}
+
+.artifact-progress span {
+  display: block;
+  width: calc(var(--artifact-progress, 0) * 100%);
+  height: 100%;
+  background: linear-gradient(90deg, #9aa7b3, #6fc8ff);
+}
+
+.artifact-section {
+  background: #0E1116;
+  padding: clamp(84px, 11vw, 150px) clamp(20px, 6vw, 84px);
+}
+
+.artifact-section-heading {
+  max-width: 900px;
+}
+
+.artifact-section-heading--row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto 34px;
+}
+
+.artifact-section--stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: clamp(36px, 7vw, 96px);
+  align-items: center;
+  border-top: 1px solid rgba(245, 248, 251, 0.08);
+}
+
+.artifact-stats-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.artifact-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 84px;
+  padding: 20px 22px;
+  border: 1px solid rgba(245, 248, 251, 0.11);
+  border-radius: 8px;
+  background: rgba(245, 248, 251, 0.035);
+}
+
+.artifact-stat strong {
+  color: #f5f8fb;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 1;
+}
+
+.artifact-stat span {
+  color: rgba(245, 248, 251, 0.62);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.artifact-feature-grid,
+.artifact-hackathon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.artifact-feature-grid article,
+.artifact-hackathon-card,
+.artifact-empty,
+.artifact-final-panel {
+  border: 1px solid rgba(245, 248, 251, 0.11);
+  border-radius: 8px;
+  background: rgba(245, 248, 251, 0.04);
+}
+
+.artifact-feature-grid article {
+  min-height: 230px;
+  padding: 24px;
+}
+
+.artifact-feature-grid svg {
+  color: #6fc8ff;
+}
+
+.artifact-feature-grid h3,
+.artifact-hackathon-card h3,
+.artifact-empty h3 {
+  margin: 22px 0 10px;
+  color: #f5f8fb;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.artifact-feature-grid p,
+.artifact-hackathon-card p,
+.artifact-empty p {
+  margin: 0;
+  color: rgba(245, 248, 251, 0.62);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.artifact-section--hackathons {
+  border-top: 1px solid rgba(245, 248, 251, 0.08);
+}
+
+.artifact-hackathon-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.artifact-hackathon-card {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.artifact-hackathon-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(111, 200, 255, 0.4);
+  background: rgba(245, 248, 251, 0.065);
+}
+
+.artifact-hackathon-card > div:first-child span:last-child {
+  color: rgba(245, 248, 251, 0.48);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.artifact-hackathon-card h3 {
+  margin-top: 26px;
+  font-size: 1.25rem;
+}
+
+.artifact-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  color: var(--accent-primary-hover);
+}
+
+.artifact-empty {
+  grid-column: 1 / -1;
+  padding: 34px;
+}
+
+.artifact-empty h3 {
+  margin-top: 0;
+}
+
+.artifact-empty .artifact-primary-button {
+  margin-top: 22px;
+}
+
+.artifact-section--final {
+  min-height: 78vh;
+  display: grid;
+  align-items: center;
+}
+
+.artifact-final-panel {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(34px, 7vw, 80px);
+  background:
+    linear-gradient(135deg, rgba(111, 200, 255, 0.09), rgba(255, 90, 31, 0.08)),
+    rgba(245, 248, 251, 0.04);
+}
+
+.artifact-final-panel h2 {
+  max-width: 980px;
+}
+
+@media (max-width: 980px) {
+  .artifact-nav-links {
+    display: none;
+  }
+
+  .artifact-section--stats {
+    grid-template-columns: 1fr;
+  }
+
+  .artifact-feature-grid,
+  .artifact-hackathon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .artifact-nav {
+    min-height: 60px;
+    padding: 0 14px;
+  }
+
+  .artifact-brand {
+    font-size: 0.78rem;
+  }
+
+  .artifact-nav-actions {
+    gap: 6px;
+  }
+
+  .artifact-link-button,
+  .artifact-primary-button {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 0.76rem;
+  }
+
+  .artifact-sticky-stage {
+    min-height: 620px;
+  }
+
+  .artifact-story-copy--intro {
+    top: 76px;
+  }
+
+  .artifact-story-copy--middle {
+    top: 58%;
+  }
+
+  .artifact-story-copy--end {
+    right: auto;
+    left: 20px;
+    bottom: 76px;
+    text-align: left;
+  }
+
+  .artifact-story-copy h1 {
+    font-size: clamp(2.85rem, 15vw, 4.8rem);
+  }
+
+  .artifact-story-copy h2,
+  .artifact-section h2,
+  .artifact-final-panel h2 {
+    font-size: clamp(2.05rem, 11vw, 3.7rem);
+  }
+
+  .artifact-loader {
+    left: 20px;
+    transform: none;
+  }
+
+  .artifact-progress {
+    left: 20px;
+    right: auto;
+    width: 160px;
+  }
+
+  .artifact-section-heading--row {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .artifact-feature-grid,
+  .artifact-hackathon-grid {
+    grid-template-columns: 1fr;
+  }
+}
