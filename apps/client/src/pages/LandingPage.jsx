@@ -65,7 +65,7 @@ export function LandingPage() {
           apiClient.get('/stats/public'),
           apiClient.get('/hackathons/featured'),
         ]);
-        setStats(statsRes.data);
+        setStats(prev => ({ ...prev, ...statsRes.data }));
         setFeatured(featuredRes.data);
       } catch {
         // Fallback values keep the landing page usable when the API is unavailable.
