@@ -13,8 +13,8 @@ export function AuthProvider({ children }) {
       const existingToken = getAccessToken();
       if (existingToken) {
         try {
-          const res = await apiClient.get('/users/me');
-          setUser(res.data);
+          const user = await apiClient.get('/users/me');
+          setUser(user);
         } catch {
           setAccessToken(null);
           setUser(null);
@@ -23,8 +23,8 @@ export function AuthProvider({ children }) {
         // Try silent refresh
         try {
           const res = await apiClient.post('/auth/refresh');
-          setAccessToken(res.data.accessToken);
-          setUser(res.data.user);
+          setAccessToken(res.accessToken);
+          setUser(res.user);
         } catch {
           setUser(null);
         }
@@ -45,14 +45,14 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await apiClient.post('/auth/login', { email, password });
-    setAccessToken(res.data.accessToken);
-    setUser(res.data.user);
-    return res.data.user;
+    setAccessToken(res.accessToken);
+    setUser(res.user);
+    return res.user;
   };
 
   const signup = async (data) => {
     const res = await apiClient.post('/auth/signup', data);
-    return res.data;
+    return res;
   };
 
   const logout = async () => {
@@ -67,9 +67,9 @@ export function AuthProvider({ children }) {
   };
 
   const updateProfile = async (data) => {
-    const res = await apiClient.patch('/users/me', data);
-    setUser(res.data);
-    return res.data;
+    const user = await apiClient.patch('/users/me', data);
+    setUser(user);
+    return user;
   };
 
   return (
