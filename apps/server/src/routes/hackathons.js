@@ -15,6 +15,37 @@ router.get('/', validate(hackathonFilterSchema, 'query'), async (req, res, next)
   } catch (err) { next(err); }
 });
 
+// GET /api/v1/hackathons/mine — Hackathons owned by the current organizer/admin
+router.get('/mine', requireAuth, requireRole('organizer', 'admin'), async (req, res, next) => {
+  try {
+    const organizerFilter = req.user.role === 'admin' ? {} : { organizerId: req.user._id };
+    const hackathons = await Hackathon.find(organizerFilter)
+      .populate('organizerId', 'name avatarUrl')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const statusCounts = hackathons.reduce((acc, hackathon) => {
+      acc[hackathon.status] = (acc[hackathon.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      data: {
+        hackathons,
+        summary: {
+          total: hackathons.length,
+          drafts: statusCounts.draft || 0,
+          published: (statusCounts.published || 0) + (statusCounts.registration_open || 0) + (statusCounts.submissions_open || 0),
+          active: (statusCounts.registration_open || 0) + (statusCounts.submissions_open || 0) + (statusCounts.judging || 0),
+          completed: statusCounts.completed || 0,
+          statusCounts,
+        },
+      },
+    });
+  } catch (err) { next(err); }
+});
+
 // GET /api/v1/hackathons/featured — Featured on landing page
 router.get('/featured', async (req, res, next) => {
   try {

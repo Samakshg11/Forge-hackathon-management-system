@@ -23,6 +23,7 @@ import { RoleDashboardPage } from './pages/RoleDashboardPage';
 import { BookmarksPage } from './pages/BookmarksPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { DashboardLayout } from './layouts/DashboardLayout';
 
 export default function App() {
@@ -82,6 +83,16 @@ export default function App() {
                         <ProtectedRoute>
                           <DashboardLayout>
                             <RoleDashboardPage />
+                          </DashboardLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/admin/analytics"
+                      element={
+                        <ProtectedRoute roles={['admin']}>
+                          <DashboardLayout>
+                            <AnalyticsPage />
                           </DashboardLayout>
                         </ProtectedRoute>
                       }
