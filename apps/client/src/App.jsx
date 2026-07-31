@@ -47,41 +47,7 @@ export default function App() {
 
                     {/* Authenticated / Role Gated Routes */}
                     <Route
-                      path="/hackathons/create"
-                      element={
-                        <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
-                          <HackathonWizardPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/hackathons/:id/edit"
-                      element={
-                        <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
-                          <HackathonWizardPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/hackathons/:id/submit"
-                      element={
-                        <ProtectedRoute roles={['PARTICIPANT', 'ADMIN']}>
-                          <SubmissionFormPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/teams/:teamId"
-                      element={
-                        <ProtectedRoute>
-                          <TeamWorkspacePage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* Dashboard routes wrapped in DashboardLayout */}
-                    <Route
-                      path="/dashboard/*"
+                      path="/app/dashboard"
                       element={
                         <ProtectedRoute>
                           <DashboardLayout>
@@ -90,9 +56,71 @@ export default function App() {
                         </ProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/app/organizer"
+                      element={
+                        <ProtectedRoute>
+                          <DashboardLayout>
+                            <RoleDashboardPage />
+                          </DashboardLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/judge"
+                      element={
+                        <ProtectedRoute>
+                          <DashboardLayout>
+                            <RoleDashboardPage />
+                          </DashboardLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/admin"
+                      element={
+                        <ProtectedRoute>
+                          <DashboardLayout>
+                            <RoleDashboardPage />
+                          </DashboardLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/organizer/hackathons/new"
+                      element={
+                        <ProtectedRoute roles={['organizer', 'admin']}>
+                          <HackathonWizardPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/organizer/hackathons/:id/edit"
+                      element={
+                        <ProtectedRoute roles={['organizer', 'admin']}>
+                          <HackathonWizardPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/hackathons/:id/submit"
+                      element={
+                        <ProtectedRoute roles={['participant', 'admin']}>
+                          <SubmissionFormPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/teams/:teamId"
+                      element={
+                        <ProtectedRoute>
+                          <TeamWorkspacePage />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     <Route
-                      path="/bookmarks"
+                      path="/app/bookmarks"
                       element={
                         <ProtectedRoute>
                           <BookmarksPage />
@@ -100,7 +128,7 @@ export default function App() {
                       }
                     />
                     <Route
-                      path="/certificates"
+                      path="/app/certificates"
                       element={
                         <ProtectedRoute>
                           <CertificatesPage />
@@ -108,13 +136,16 @@ export default function App() {
                       }
                     />
                     <Route
-                      path="/profile"
+                      path="/app/profile"
                       element={
                         <ProtectedRoute>
                           <ProfilePage />
                         </ProtectedRoute>
                       }
                     />
+
+                    <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+                    <Route path="/dashboard/*" element={<Navigate to="/app/dashboard" replace />} />
 
                     {/* Fallback redirect */}
                     <Route path="*" element={<Navigate to="/" replace />} />

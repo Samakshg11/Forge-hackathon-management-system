@@ -295,7 +295,7 @@ export function LandingPage() {
 
         <div className="artifact-nav-actions">
           {user ? (
-            <Link to="/dashboard" className="artifact-link-button">
+            <Link to="/app/dashboard" className="artifact-link-button">
               Dashboard
             </Link>
           ) : (
