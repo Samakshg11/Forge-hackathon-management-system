@@ -236,10 +236,22 @@ export const createReviewSchema = z.object({
 // ─── Search / Filter Schemas ──────────────────────────────────────────────────
 
 export const hackathonFilterSchema = z.object({
-  search: z.string().max(100).optional(),
-  mode: HackathonMode.optional(),
-  theme: z.string().optional(),
-  status: HackathonStatus.optional(),
+  search: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().max(100).optional()
+  ),
+  mode: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    HackathonMode.optional()
+  ),
+  theme: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().optional()
+  ),
+  status: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    HackathonStatus.optional()
+  ),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(12),
 });

@@ -28,7 +28,13 @@ export function HackathonListPage() {
     async function loadHackathons() {
       setLoading(true);
       try {
-        const query = new URLSearchParams({ search, mode, theme, status, page }).toString();
+        const queryParams = new URLSearchParams();
+        if (search) queryParams.set('search', search);
+        if (mode) queryParams.set('mode', mode);
+        if (theme) queryParams.set('theme', theme);
+        if (status) queryParams.set('status', status);
+        queryParams.set('page', String(page));
+        const query = queryParams.toString();
         const res = await apiClient.get(`/hackathons?${query}`);
         setHackathons(res.data.items);
         setTotal(res.data.total);
