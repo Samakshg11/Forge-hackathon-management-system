@@ -49,6 +49,20 @@ export default {
         glow: '0 0 24px rgba(255, 90, 31, 0.35)',
         'glow-subtle': '0 0 16px rgba(91, 140, 255, 0.25)',
       },
+      animation: {
+        aurora: 'aurora 20s linear infinite',
+        glow: 'glow 10s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        aurora: {
+          from: { backgroundPosition: '50% 50%, 50% 50%' },
+          to: { backgroundPosition: '350% 50%, 350% 50%' },
+        },
+        glow: {
+          '0%': { opacity: 0.5, filter: 'blur(20px)' },
+          '100%': { opacity: 1, filter: 'blur(40px)' },
+        },
+      },
     },
   },
   plugins: [],
