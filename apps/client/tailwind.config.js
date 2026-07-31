@@ -52,6 +52,7 @@ export default {
       animation: {
         aurora: 'aurora 20s linear infinite',
         glow: 'glow 10s ease-in-out infinite alternate',
+        marquee: 'marquee 25s linear infinite',
       },
       keyframes: {
         aurora: {
@@ -61,6 +62,10 @@ export default {
         glow: {
           '0%': { opacity: 0.5, filter: 'blur(20px)' },
           '100%': { opacity: 1, filter: 'blur(40px)' },
+        },
+        marquee: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' },
         },
       },
     },

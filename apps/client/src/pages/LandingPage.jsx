@@ -1,503 +1,228 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight, Cpu, Radio, ShieldCheck, Trophy, Zap } from 'lucide-react';
-
-import apiClient from '../services/apiClient';
-import { useAuth } from '../contexts/AuthContext';
-import { Footer } from '../components/Footer';
-import { Badge } from '../components/ui/Badge';
-import { Skeleton } from '../components/ui/Skeleton';
-import { MagneticButton } from '../components/ui/MagneticButton';
-
-gsap.registerPlugin(ScrollTrigger);
-
-const FRAME_COUNT = 192;
-const FRAME_PATH = '/frames/frame_';
-const FRAME_EXTENSION = '.png';
-const FRAME_PAD = 4;
-const BACKGROUND = '#0E1116';
-
-// Five narrative beats mapped against the artifact sequence's own motion —
-// the footage zooms in tight, pulls back to reveal the full ring structure,
-// holds/rotates, then returns to a close hold at the end. Copy follows that
-// arc rather than fighting it, so every beat lands on frames that support it.
-const STORY_BEATS = [
-  { key: 'intro', start: 0, in: 0.1, out: 0.22, end: 0.3 },
-  { key: 'reveal', start: 0.18, in: 0.28, out: 0.42, end: 0.5 },
-  { key: 'system', start: 0.42, in: 0.5, out: 0.64, end: 0.72 },
-  { key: 'sync', start: 0.62, in: 0.7, out: 0.82, end: 0.88 },
-  { key: 'final', start: 0.82, in: 0.9, out: 1, end: 1 },
-];
-
-function frameUrl(index) {
-  return `${FRAME_PATH}${String(index).padStart(FRAME_PAD, '0')}${FRAME_EXTENSION}`;
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
+import { motion } from 'framer-motion';
+import { ArrowRight, ChevronRight, Globe, Shield, Sparkles, Trophy, Zap } from 'lucide-react';
 
 export function LandingPage() {
-  const { user } = useAuth();
-  const [stats, setStats] = useState({ activeHackathons: 14, totalUsers: 1840, totalSubmissions: 420 });
-  const [featured, setFeatured] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [navScrolled, setNavScrolled] = useState(false);
-  const [loadProgress, setLoadProgress] = useState(0);
-
-  const canvasRef = useRef(null);
-  const storyRef = useRef(null);
-  const stageRef = useRef(null);
-  const scrollCueRef = useRef(null);
-  const beatRefs = useRef([]);
-  const framesRef = useRef([]);
-  const loadedCountRef = useRef(0);
-  const navScrolledRef = useRef(false);
-  const canvasSizeRef = useRef({ width: 0, height: 0, scale: 1 });
-  const frameProxyRef = useRef({ frame: 0 });
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [statsRes, featuredRes] = await Promise.all([
-          apiClient.get('/stats/public'),
-          apiClient.get('/hackathons/featured'),
-        ]);
-        setStats(prev => ({ ...prev, ...statsRes.data }));
-        setFeatured(Array.isArray(featuredRes.data) ? featuredRes.data : featuredRes.data?.hackathons ?? []);
-      } catch {
-        // Fallback values keep the landing page usable when the API is unavailable.
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const story = storyRef.current;
-    const stage = stageRef.current;
-    const context = canvas?.getContext('2d', { alpha: false });
-
-    if (!canvas || !story || !stage || !context) {
-      return undefined;
-    }
-
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-
-    function drawFrame(index) {
-      const { width, height } = canvasSizeRef.current;
-      let frameIndex = clamp(Math.round(index), 0, FRAME_COUNT - 1);
-      let image = framesRef.current[frameIndex];
-
-      // Frames finish downloading in whatever order the network delivers
-      // them, not necessarily 0→191. Walk backward first (show the most
-      // recent loaded moment behind the current position), and if nothing
-      // earlier has loaded yet, walk forward instead so we still draw
-      // *something* rather than leaving the canvas black.
-      let searchIndex = frameIndex;
-      while (!image && searchIndex > 0) {
-        searchIndex -= 1;
-        image = framesRef.current[searchIndex];
-      }
-      if (!image) {
-        searchIndex = frameIndex;
-        while (!image && searchIndex < FRAME_COUNT - 1) {
-          searchIndex += 1;
-          image = framesRef.current[searchIndex];
-        }
-      }
-
-      context.fillStyle = BACKGROUND;
-      context.fillRect(0, 0, width, height);
-
-      if (!image) {
-        return;
-      }
-
-      const imageRatio = image.naturalWidth / image.naturalHeight;
-      const canvasRatio = width / height;
-      let drawWidth = width;
-      let drawHeight = height;
-
-      if (imageRatio > canvasRatio) {
-        drawHeight = drawWidth / imageRatio;
-      } else {
-        drawWidth = drawHeight * imageRatio;
-      }
-
-      context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
-    }
-
-    function resizeCanvas() {
-      const rect = canvas.getBoundingClientRect();
-      const scale = Math.min(window.devicePixelRatio || 1, 2);
-      const width = Math.floor(rect.width);
-      const height = Math.floor(rect.height);
-
-      canvas.width = Math.floor(width * scale);
-      canvas.height = Math.floor(height * scale);
-      canvasSizeRef.current = { width, height, scale };
-      context.setTransform(scale, 0, 0, scale, 0, 0);
-      drawFrame(frameProxyRef.current.frame);
-    }
-
-    function preloadFrames() {
-      Array.from({ length: FRAME_COUNT }, (_, index) => {
-        const image = new Image();
-        image.src = frameUrl(index + 1);
-
-        image.onload = () => {
-          framesRef.current[index] = image;
-          loadedCountRef.current += 1;
-          setLoadProgress(Math.round((loadedCountRef.current / FRAME_COUNT) * 100));
-          // Repaint on every arrival, not just the first frame — otherwise a
-          // frame that finishes loading while the user isn't actively
-          // scrolling (or after they've scrolled past) never gets drawn.
-          drawFrame(frameProxyRef.current.frame);
-        };
-
-        image.onerror = () => {
-          loadedCountRef.current += 1;
-          setLoadProgress(Math.round((loadedCountRef.current / FRAME_COUNT) * 100));
-        };
-
-        return image;
-      });
-    }
-
-    resizeCanvas();
-    preloadFrames();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Safety net: while frames are still streaming in, keep repainting the
-    // current position every tick. This guarantees the sequence "catches up"
-    // on its own the moment enough frames exist, instead of staying stuck on
-    // a black canvas until the next scroll event fires. Once everything is
-    // loaded this loop stops — draws are then driven purely by scroll.
-    let catchUpRaf = 0;
-    function catchUpLoop() {
-      drawFrame(frameProxyRef.current.frame);
-      if (loadedCountRef.current < FRAME_COUNT) {
-        catchUpRaf = requestAnimationFrame(catchUpLoop);
-      }
-    }
-    catchUpRaf = requestAnimationFrame(catchUpLoop);
-
-    // Drive the frame sequence, the nav background, and every beat's
-    // reveal/exit off one pinned ScrollTrigger. `scrub: 0.85` intentionally
-    // trails the raw scroll position by a fraction of a second — that lag is
-    // what makes the sequence feel like it has physical weight instead of
-    // snapping 1:1 to the wheel, which is what reads as "cheap".
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const ctx = gsap.context(() => {
-      const proxy = frameProxyRef.current;
-      proxy.frame = 0;
-
-      const timeline = gsap.timeline({
-        scrollTrigger: {
-          trigger: story,
-          start: 'top top',
-          end: 'bottom bottom',
-          scrub: 0.85,
-          onUpdate: (self) => {
-            const nextNavScrolled = self.progress > 0.02 || window.scrollY > 12;
-            if (nextNavScrolled !== navScrolledRef.current) {
-              navScrolledRef.current = nextNavScrolled;
-              setNavScrolled(nextNavScrolled);
-            }
-            stage.style.setProperty('--artifact-progress', self.progress.toFixed(4));
-            if (scrollCueRef.current) {
-              scrollCueRef.current.style.setProperty(
-                '--cue-opacity',
-                (1 - clamp(self.progress / 0.06, 0, 1)).toFixed(3)
-              );
-            }
-          },
-        },
-      });
-
-      timeline.to(proxy, {
-        frame: FRAME_COUNT - 1,
-        duration: 1,
-        ease: 'none',
-        onUpdate: () => drawFrame(proxy.frame),
-      });
-
-      STORY_BEATS.forEach(({ key, start, in: fadeInEnd, out: fadeOutStart, end }, index) => {
-        const el = beatRefs.current[index];
-        if (!el) return;
-
-        const enterFrom = prefersReducedMotion
-          ? { autoAlpha: 0 }
-          : { autoAlpha: 0, y: 28, filter: 'blur(6px)' };
-        const enterTo = prefersReducedMotion
-          ? { autoAlpha: 1 }
-          : { autoAlpha: 1, y: 0, filter: 'blur(0px)' };
-        const exitTo = prefersReducedMotion
-          ? { autoAlpha: 0 }
-          : { autoAlpha: 0, y: -18, filter: 'blur(4px)' };
-
-        if (index === 0) {
-          // The hero beat gets its own immediate on-load reveal — nobody
-          // should have to scroll before they see the headline. It only
-          // joins the scroll timeline for its exit, once the reveal settles.
-          gsap.fromTo(el, enterFrom, {
-            ...enterTo,
-            duration: prefersReducedMotion ? 0.6 : 1.5,
-            ease: 'power3.out',
-            delay: prefersReducedMotion ? 0 : 0.25,
-          });
-        } else {
-          // Every other beat rises with a soft upward drift + blur-clear
-          // rather than a flat opacity fade — no snap cuts.
-          timeline.fromTo(el, enterFrom, { ...enterTo, ease: 'power2.out', duration: fadeInEnd - start }, start);
-        }
-
-        if (key !== 'final') {
-          timeline.to(el, { ...exitTo, ease: 'power1.in', duration: end - fadeOutStart }, fadeOutStart);
-        }
-      });
-    }, story);
-
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-      cancelAnimationFrame(catchUpRaf);
-      ctx.revert();
-    };
-  }, []);
-
-  const statItems = [
-    { label: 'Active hackathons', value: stats.activeHackathons },
-    { label: 'Builders onboarded', value: stats.totalUsers },
-    { label: 'Submissions shipped', value: stats.totalSubmissions },
+  const howItWorks = [
+    'Create Profile',
+    'Join Hackathons',
+    'Build & Submit',
+    'Get Recognized',
   ];
 
+  const featureChips = [
+    { label: 'AI', tone: 'from-cyan-400/25 to-cyan-500/10', icon: Sparkles },
+    { label: 'WAI', tone: 'from-violet-400/25 to-violet-500/10', icon: Globe },
+    { label: 'Web3', tone: 'from-sky-400/25 to-sky-500/10', icon: Shield },
+    { label: 'Fintech', tone: 'from-fuchsia-400/25 to-fuchsia-500/10', icon: Trophy },
+  ];
+
+  const sponsors = ['Google', 'Microsoft', 'Meta', 'Amazon', 'Apple', 'NVIDIA', 'Stripe', 'coinbase'];
+
   return (
-    <div className="forge-artifact-page min-h-screen text-text-primary selection:bg-accent-primary selection:text-white">
-      <header className={`artifact-nav ${navScrolled ? 'is-scrolled' : ''}`}>
-        <Link to="/" className="artifact-brand" aria-label="FORGE home">
-          <span>F</span>
-          FORGE
-        </Link>
+    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(128,90,213,0.28),_transparent_24%),radial-gradient(circle_at_right,_rgba(34,211,238,0.22),_transparent_22%),radial-gradient(circle_at_bottom_left,_rgba(168,85,247,0.14),_transparent_26%),#030303] text-white selection:bg-cyan-500/30">
+      <div className="absolute inset-0 z-[1] pointer-events-none opacity-[0.06] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      <div className="absolute inset-x-0 top-0 h-[60vh] bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04),transparent)]" />
 
-        <nav className="artifact-nav-links" aria-label="Primary">
-          <a href="#artifact">Artifact</a>
-          <a href="#engine">Engine</a>
-          <Link to="/hackathons">Hackathons</Link>
-        </nav>
+      <motion.nav
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed left-1/2 top-6 z-50 w-[min(92vw,560px)] -translate-x-1/2 rounded-full border border-white/14 bg-white/8 px-3 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+      >
+        <div className="flex items-center justify-between gap-2 text-sm">
+          <div className="hidden md:flex items-center gap-6 pl-4 text-zinc-300">
+            <a href="#features" className="transition-colors hover:text-white">Features</a>
+            <a href="#how-it-works" className="transition-colors hover:text-white">How it Works</a>
+            <a href="#pricing" className="transition-colors hover:text-white">Pricing</a>
+            <a href="#sponsors" className="transition-colors hover:text-white">Sponsors</a>
+          </div>
 
-        <div className="artifact-nav-actions">
-          {user ? (
-            <Link to="/app/dashboard" className="artifact-link-button">
-              Dashboard
-            </Link>
-          ) : (
-            <>
-              <Link to="/login" className="artifact-link-button">
-                Log in
-              </Link>
-              <Link to="/signup" className="artifact-primary-button">
-                Sign up
-              </Link>
-            </>
-          )}
+          <div className="flex-1 md:flex-none" />
+
+          <Link
+            to="/signup"
+            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 bg-[linear-gradient(135deg,rgba(168,85,247,0.85),rgba(34,211,238,0.85))] px-4 py-2 font-semibold text-white shadow-[0_0_24px_rgba(34,211,238,0.25)] transition-transform hover:scale-[1.02]"
+          >
+            Get Started
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         </div>
-      </header>
+      </motion.nav>
 
-      <main>
-        <section ref={storyRef} id="artifact" className="artifact-scroll-story" aria-label="FORGE AI artifact scroll story">
-          <div ref={stageRef} className="artifact-sticky-stage">
-            <canvas ref={canvasRef} className="artifact-canvas" aria-label="Exploded futuristic AI desktop artifact" />
+      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col items-center px-6 pb-0 pt-28 sm:px-8 lg:px-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 backdrop-blur-md"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+          </span>
+          <span className="text-xs font-medium uppercase tracking-[0.35em] text-zinc-300">Hackathon OS v2.0</span>
+        </motion.div>
 
+        <motion.h1
+          initial={{ opacity: 0, y: 22, filter: 'blur(14px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.9, delay: 0.15 }}
+          className="max-w-6xl text-center text-6xl font-black tracking-tight sm:text-7xl md:text-8xl lg:text-9xl"
+        >
+          <span className="bg-gradient-to-r from-[#ce7bff] via-[#9ec8ff] to-[#68f0ff] bg-clip-text text-transparent drop-shadow-[0_0_22px_rgba(132,94,255,0.35)]">
+            Forge the Future
+          </span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.35 }}
+          className="mt-8 max-w-3xl text-center text-base leading-8 text-zinc-300 sm:text-lg md:text-xl"
+        >
+          The premium orchestration engine for world-class hackathons. Build, manage, and scale innovation in a
+          platform that feels like an operating system for builders.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="mt-12 flex flex-col gap-4 sm:flex-row"
+        >
+          <Link
+            to="/signup"
+            className="group inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white px-8 py-4 font-semibold text-black shadow-[0_0_40px_rgba(255,255,255,0.08)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            Start Organizing
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <Link
+            to="/hackathons"
+            className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/6 px-8 py-4 font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/10"
+          >
+            View Showcase
+          </Link>
+        </motion.div>
+
+        <div className="relative mt-16 w-full max-w-6xl lg:mt-20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.6 }}
+            className="relative mx-auto aspect-[1.4/1] w-full max-w-4xl"
+          >
+            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,_rgba(108,219,255,0.18),_transparent_55%)] blur-3xl" />
+            <div className="absolute inset-8 rounded-full border border-cyan-300/12 bg-white/3 shadow-[0_0_120px_rgba(100,180,255,0.08)] backdrop-blur-sm" />
             <div
-              ref={(el) => (beatRefs.current[0] = el)}
-              className="artifact-story-copy artifact-story-copy--intro"
-            >
-              <p className="artifact-eyebrow">FORGE AI Core</p>
-              <h1>Hackathons, orchestrated by intelligence.</h1>
-              <p>
-                A futuristic command artifact for organizers, judges, and builders moving from registration chaos to
-                launch-ready execution.
-              </p>
-              <div className="artifact-hero-actions">
-                <MagneticButton
-                  as={Link}
-                  to="/hackathons"
-                  className="artifact-primary-button artifact-primary-button--large"
+              className="absolute inset-12 rounded-full border border-violet-300/16"
+              style={{ animation: 'spin 42s linear infinite' }}
+            />
+            <div
+              className="absolute inset-16 rounded-full border border-cyan-200/18"
+              style={{ animation: 'spin 28s linear infinite reverse' }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative h-[34rem] w-[34rem] max-w-[88vw] max-h-[88vw] sm:h-[38rem] sm:w-[38rem]">
+                <div className="absolute inset-[14%] rounded-full bg-[radial-gradient(circle_at_30%_25%,rgba(150,238,255,0.65),rgba(112,76,255,0.45)_35%,rgba(0,0,0,0.9)_72%)] blur-[1px] shadow-[0_0_80px_rgba(105,212,255,0.25)]" />
+                <div className="absolute inset-[8%] rounded-full border border-cyan-300/25 shadow-[inset_0_0_40px_rgba(112,239,255,0.14)]" />
+                <div
+                  className="absolute inset-[3%] rounded-full border border-violet-300/18"
+                  style={{ animation: 'spin 18s linear infinite' }}
+                />
+                <div className="absolute inset-[22%] rounded-full border border-white/10 shadow-[inset_0_0_30px_rgba(255,255,255,0.04)]" />
+                <div className="absolute left-[12%] top-[18%] h-4 w-4 rounded-full bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.8)]" />
+                <div className="absolute right-[10%] top-[28%] h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(78,228,255,0.8)]" />
+                <div className="absolute bottom-[20%] left-[16%] h-3.5 w-3.5 rounded-full bg-violet-300 shadow-[0_0_22px_rgba(205,132,255,0.9)]" />
+                <div className="absolute bottom-[18%] right-[18%] h-4 w-4 rounded-full bg-white/80 shadow-[0_0_18px_rgba(255,255,255,0.7)]" />
+              </div>
+            </div>
+
+            {featureChips.map((chip, index) => {
+              const Icon = chip.icon;
+              const positions = [
+                'left-[22%] top-[14%]',
+                'left-[6%] top-[50%]',
+                'right-[7%] top-[28%]',
+                'right-[18%] bottom-[13%]',
+              ];
+
+              return (
+                <motion.div
+                  key={chip.label}
+                  initial={{ opacity: 0, y: 18, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.9 + index * 0.08 }}
+                  className={`absolute ${positions[index]} rounded-2xl border border-white/10 bg-gradient-to-b ${chip.tone} px-4 py-4 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.08)]`}
                 >
-                  Explore hackathons <ArrowRight className="h-4 w-4" />
-                </MagneticButton>
-                <MagneticButton as={Link} to="/signup" className="artifact-link-button artifact-link-button--large">
-                  Start building
-                </MagneticButton>
-              </div>
-            </div>
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-cyan-200">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="text-sm font-medium text-white">{chip.label}</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
 
-            <div
-              ref={(el) => (beatRefs.current[1] = el)}
-              className="artifact-story-copy artifact-story-copy--middle artifact-story-copy--left"
-            >
-              <p className="artifact-eyebrow">Scroll to unseal</p>
-              <h2>Every event layer opens with intent.</h2>
-              <p>The core pulls back to reveal the full structure underneath — nothing hidden, nothing bolted on.</p>
-            </div>
-
-            <div
-              ref={(el) => (beatRefs.current[2] = el)}
-              className="artifact-story-copy artifact-story-copy--middle artifact-story-copy--right"
-            >
-              <p className="artifact-eyebrow">One connected system</p>
-              <h2>Registrations, teams, submissions, scoring.</h2>
-              <p>Every layer of running an event lives in one place, moving in lockstep instead of six disconnected tools.</p>
-            </div>
-
-            <div ref={(el) => (beatRefs.current[3] = el)} className="artifact-story-copy artifact-story-copy--end">
-              <p className="artifact-eyebrow">Real-time operating layer</p>
-              <h2>The whole hackathon stays in sync.</h2>
-              <p>FORGE turns scattered decisions into a clear, live control plane for the people running the room.</p>
-            </div>
-
-            <div
-              ref={(el) => (beatRefs.current[4] = el)}
-              className="artifact-story-copy artifact-story-copy--final"
-            >
-              <p className="artifact-eyebrow">Ready when you are</p>
-              <h2>Built for builders. Built for the room.</h2>
-              <div className="artifact-hero-actions">
-                <MagneticButton as={Link} to="/signup" className="artifact-primary-button artifact-primary-button--large">
-                  Launch FORGE <ArrowRight className="h-4 w-4" />
-                </MagneticButton>
-              </div>
-            </div>
-
-            <div ref={scrollCueRef} className="artifact-scroll-cue" aria-hidden="true">
-              <span />
-              Scroll
-            </div>
-
-            {loadProgress < 100 && (
-              <div className="artifact-loader" aria-live="polite">
-                Loading artifact {loadProgress}%
-              </div>
-            )}
-
-            <div className="artifact-progress" aria-hidden="true">
-              <span />
-            </div>
-          </div>
-        </section>
-
-        <section id="engine" className="artifact-section artifact-section--stats">
-          <div className="artifact-section-heading">
-            <p className="artifact-eyebrow">Live Platform Signal</p>
-            <h2>Built for the actual pressure of running a hackathon.</h2>
-          </div>
-          <div className="artifact-stats-grid">
-            {statItems.map((item) => (
-              <div key={item.label} className="artifact-stat">
-                <strong>{Number(item.value || 0).toLocaleString()}</strong>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="artifact-section">
-          <div className="artifact-feature-grid">
-            <article>
-              <Cpu className="h-5 w-5" />
-              <h3>Smart event pipeline</h3>
-              <p>Custom approval queues, participant deduplication, deadline locks, and team rules stay enforceable.</p>
-            </article>
-            <article>
-              <ShieldCheck className="h-5 w-5" />
-              <h3>Fair judging layer</h3>
-              <p>Blind scorecards and weighted results help keep evaluation structured, auditable, and bias-resistant.</p>
-            </article>
-            <article>
-              <Radio className="h-5 w-5" />
-              <h3>Realtime coordination</h3>
-              <p>Socket-powered updates keep organizers, participants, judges, and leaderboards moving together.</p>
-            </article>
-            <article>
-              <Zap className="h-5 w-5" />
-              <h3>Launch-ready outcomes</h3>
-              <p>Certificates, submissions, bookmarks, and dashboards carry the event beyond the final demo.</p>
-            </article>
-          </div>
-        </section>
-
-        <section className="artifact-section artifact-section--hackathons">
-          <div className="artifact-section-heading artifact-section-heading--row">
-            <div>
-              <p className="artifact-eyebrow">Live Competitions</p>
-              <h2>Active hackathons</h2>
-            </div>
-            <Link to="/hackathons" className="artifact-link-button artifact-link-button--large">
-              View all <ArrowRight className="h-4 w-4" />
-            </Link>
+        <section id="how-it-works" className="mt-16 w-full max-w-6xl px-0 sm:px-4 lg:mt-14">
+          <div className="mb-5 text-left sm:text-center">
+            <h2 className="text-2xl font-semibold text-white sm:text-3xl">How it Works</h2>
           </div>
 
-          {loading ? (
-            <div className="artifact-hackathon-grid">
-              <Skeleton className="h-64 rounded-xl" />
-              <Skeleton className="h-64 rounded-xl" />
-              <Skeleton className="h-64 rounded-xl" />
-            </div>
-          ) : (
-            <div className="artifact-hackathon-grid">
-              {featured.length > 0 ? (
-                featured.slice(0, 3).map((hackathon) => (
-                  <Link key={hackathon._id} to={`/hackathons/${hackathon.slug}`} className="artifact-hackathon-card">
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge status={hackathon.status} />
-                      <span>{hackathon.mode}</span>
-                    </div>
-                    <h3>{hackathon.title}</h3>
-                    <p>{hackathon.description}</p>
-                    <div className="artifact-card-foot">
-                      <Trophy className="h-4 w-4" />
-                      <strong>{hackathon.prizePool || '$50,000'}</strong>
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="artifact-empty">
-                  <h3>No hackathons listed yet.</h3>
-                  <p>Create the first event and make the platform come alive.</p>
-                  <Link to="/hackathons/create" className="artifact-primary-button">
-                    Create hackathon
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="artifact-section artifact-section--final">
-          <div className="artifact-final-panel">
-            <p className="artifact-eyebrow">Ready to FORGE</p>
-            <h2>Bring every builder, judge, and organizer into one intelligent event space.</h2>
-            <div className="artifact-hero-actions">
-              <Link to="/signup" className="artifact-primary-button artifact-primary-button--large">
-                Join FORGE <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/hackathons" className="artifact-link-button artifact-link-button--large">
-                Browse events
-              </Link>
+          <div className="relative mx-auto mt-6 max-w-6xl">
+            <div className="absolute left-4 right-4 top-1/2 hidden h-px -translate-y-1/2 bg-gradient-to-r from-cyan-400/0 via-cyan-300/70 to-purple-400/0 lg:block" />
+            <div className="grid gap-4 lg:grid-cols-4">
+              {howItWorks.map((step, index) => (
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.95 + index * 0.1 }}
+                  className={`relative rounded-2xl border px-5 py-5 text-center shadow-[0_0_35px_rgba(0,0,0,0.28)] backdrop-blur-xl ${
+                    index === 0
+                      ? 'border-cyan-400/45 bg-[linear-gradient(180deg,rgba(59,130,246,0.22),rgba(17,24,39,0.74))]'
+                      : index === 1
+                        ? 'border-violet-400/45 bg-[linear-gradient(180deg,rgba(168,85,247,0.22),rgba(17,24,39,0.74))]'
+                        : index === 2
+                          ? 'border-cyan-300/45 bg-[linear-gradient(180deg,rgba(34,211,238,0.2),rgba(17,24,39,0.74))]'
+                          : 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(17,24,39,0.72))]'
+                  }`}
+                >
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-black/25 text-base font-semibold text-white shadow-inner">
+                    {index + 1}
+                  </div>
+                  <div className="mt-4 text-lg font-medium text-white">{step}</div>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
       </main>
 
-      <Footer />
+      <section id="sponsors" className="relative z-10 mt-12 border-t border-white/8 bg-white/[0.03] py-8 backdrop-blur-sm">
+        <p className="mb-6 text-center text-[10px] font-bold uppercase tracking-[0.35em] text-zinc-500">
+          Trusted by Global Innovators
+        </p>
+        <div className="flex overflow-hidden">
+          <div className="flex min-w-max gap-20 whitespace-nowrap py-3 animate-marquee">
+            {sponsors.map((logo) => (
+              <span key={logo} className="text-3xl font-semibold text-white/80 transition-colors hover:text-white">
+                {logo}
+              </span>
+            ))}
+          </div>
+          <div className="flex min-w-max gap-20 whitespace-nowrap py-3 animate-marquee" aria-hidden="true">
+            {sponsors.map((logo) => (
+              <span key={logo} className="text-3xl font-semibold text-white/80 transition-colors hover:text-white">
+                {logo}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
