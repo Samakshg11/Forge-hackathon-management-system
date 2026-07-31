@@ -39,8 +39,7 @@ export const signupSchema = z
     email: z.string().email('Invalid email address'),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/\d/, 'Password must contain at least one number'),
+      .min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string(),
     role: UserRole.default('participant'),
   })
