@@ -29,17 +29,18 @@ export function RoleDashboardPage() {
     async function loadDashboard() {
       try {
         if (user.role === 'participant') {
-          const regsRes = await apiClient.get('/registrations/mine');
-          setData({ registrations: regsRes.data });
+          const regs = await apiClient.get('/registrations/mine');
+          setData({ registrations: Array.isArray(regs) ? regs : regs?.registrations || [] });
         } else if (user.role === 'organizer') {
-          const mineRes = await apiClient.get('/hackathons/mine');
-          setData(mineRes.data);
+          const mine = await apiClient.get('/hackathons/mine');
+          // apiClient interceptor unwraps {success,data} → data, so mine = {hackathons, summary}
+          setData(mine);
         } else if (user.role === 'judge') {
-          const assignmentsRes = await apiClient.get('/judge/assignments');
-          setData({ assignments: assignmentsRes.data });
+          const assignments = await apiClient.get('/judge/assignments');
+          setData({ assignments: Array.isArray(assignments) ? assignments : assignments?.assignments || [] });
         } else if (user.role === 'admin') {
-          const statsRes = await apiClient.get('/analytics/platform');
-          setData({ platformStats: statsRes.data });
+          const stats = await apiClient.get('/analytics/platform');
+          setData({ platformStats: stats });
         }
       } catch {
         setData(null);

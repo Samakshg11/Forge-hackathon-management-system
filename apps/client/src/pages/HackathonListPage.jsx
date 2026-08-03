@@ -36,8 +36,9 @@ export function HackathonListPage() {
         queryParams.set('page', String(page));
         const query = queryParams.toString();
         const res = await apiClient.get(`/hackathons?${query}`);
-        setHackathons(res.data.items);
-        setTotal(res.data.total);
+        // apiClient interceptor unwraps {success,data} → data, so res = {items, total, ...}
+        setHackathons(res?.items || []);
+        setTotal(res?.total || 0);
       } catch {
         setHackathons([]);
       } finally {

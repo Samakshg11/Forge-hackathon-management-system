@@ -124,7 +124,7 @@ export function HackathonWizardPage() {
       } else {
         // 1. Create draft
         const draftRes = await apiClient.post('/hackathons', payload);
-        const hackathonId = draftRes.data._id;
+        const hackathonId = draftRes._id;
 
         // 2. Publish draft
         await apiClient.post(`/hackathons/${hackathonId}/publish`);
