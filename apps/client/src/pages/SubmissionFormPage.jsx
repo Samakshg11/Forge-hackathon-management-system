@@ -39,19 +39,19 @@ export function SubmissionFormPage() {
     async function loadSubmission() {
       try {
         const teamRes = await apiClient.get(`/teams/${teamId}`);
-        if (teamRes.data.submissionId) {
-          const subId = teamRes.data.submissionId._id || teamRes.data.submissionId;
+        if (teamRes.submissionId) {
+          const subId = teamRes.submissionId._id || teamRes.submissionId;
           const subRes = await apiClient.get(`/submissions/${subId}`);
-          setSubmission(subRes.data);
+          setSubmission(subRes);
           setFormData({
-            projectName: subRes.data.projectName || '',
-            problemStatement: subRes.data.problemStatement || '',
-            solution: subRes.data.solution || '',
-            githubUrl: subRes.data.githubUrl || '',
-            liveDemoUrl: subRes.data.liveDemoUrl || '',
-            techStack: subRes.data.techStack?.join(', ') || '',
-            presentationUrl: subRes.data.presentationUrl || '',
-            screenshotUrls: subRes.data.screenshotUrls?.join(', ') || '',
+            projectName: subRes.projectName || '',
+            problemStatement: subRes.problemStatement || '',
+            solution: subRes.solution || '',
+            githubUrl: subRes.githubUrl || '',
+            liveDemoUrl: subRes.liveDemoUrl || '',
+            techStack: subRes.techStack?.join(', ') || '',
+            presentationUrl: subRes.presentationUrl || '',
+            screenshotUrls: subRes.screenshotUrls?.join(', ') || '',
           });
         }
       } catch {
@@ -82,7 +82,7 @@ export function SubmissionFormPage() {
           techStack: stack,
           screenshotUrls: screenshots,
         });
-        setSubmission(res.data);
+        setSubmission(res);
         setAutosaveStatus('saved');
       } catch {
         setAutosaveStatus('error');
@@ -105,10 +105,10 @@ export function SubmissionFormPage() {
         techStack: stack,
         screenshotUrls: screenshots,
         teamId,
-        hackathonId: teamRes.data.hackathonId._id,
+        hackathonId: teamRes.hackathonId?._id || teamRes.hackathonId,
       });
 
-      setSubmission(res.data);
+      setSubmission(res);
       showToast('Draft submission created successfully!', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to create draft', 'error');

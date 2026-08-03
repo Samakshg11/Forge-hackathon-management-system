@@ -48,7 +48,7 @@ export function HackathonWizardPage() {
     async function loadExistingHackathon() {
       try {
         const mineRes = await apiClient.get('/hackathons/mine');
-        const existing = mineRes.data.hackathons.find((h) => h._id === id || h.slug === id);
+        const existing = mineRes.hackathons?.find((h) => h._id === id || h.slug === id);
         if (existing) {
           setFormData({
             title: existing.title || '',
