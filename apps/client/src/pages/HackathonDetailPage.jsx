@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Trophy, Users, Shield, Bookmark, CheckCircle2, FileText, ArrowRight } from 'lucide-react';
+import {
+  Calendar, MapPin, Trophy, Users, Shield, Bookmark, Trash2,
+  CheckCircle2, XCircle, Edit3, ArrowRight, ChevronDown,
+} from 'lucide-react';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -23,11 +26,20 @@ export function HackathonDetailPage() {
   const [registering, setRegistering] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
 
+  // Organizer state
+  const [registrations, setRegistrations] = useState([]);
+  const [regsLoading, setRegsLoading] = useState(false);
+  const [regsOpen, setRegsOpen] = useState(false);
+  const [actioningId, setActioningId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteTitle, setDeleteTitle] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     async function loadHackathon() {
       try {
         const res = await apiClient.get(`/hackathons/${slug}`);
-        setHackathon(res.data);
+        setHackathon(res);
       } catch {
         setHackathon(null);
       } finally {
@@ -37,18 +49,88 @@ export function HackathonDetailPage() {
     loadHackathon();
   }, [slug]);
 
-  const handleRegister = async () => {
-    if (!user) {
-      navigate('/login');
-      return;
+  const isOwner =
+    user &&
+    hackathon &&
+    (user.role === 'admin' ||
+      (user.role === 'organizer' &&
+        (hackathon.organizerId?._id === user._id ||
+          hackathon.organizerId === user._id)));
+
+  // Load registrations when organizer opens the panel
+  const loadRegistrations = async () => {
+    if (!hackathon) return;
+    setRegsLoading(true);
+    try {
+      const res = await apiClient.get(`/registrations?hackathonId=${hackathon._id}`);
+      setRegistrations(Array.isArray(res) ? res : res?.registrations || []);
+    } catch {
+      setRegistrations([]);
+    } finally {
+      setRegsLoading(false);
     }
+  };
+
+  const toggleRegsPanel = async () => {
+    const willOpen = !regsOpen;
+    setRegsOpen(willOpen);
+    if (willOpen && registrations.length === 0) {
+      await loadRegistrations();
+    }
+  };
+
+  const approveReg = async (regId) => {
+    setActioningId(regId);
+    try {
+      await apiClient.patch(`/registrations/${regId}/approve`);
+      showToast('Registration approved!', 'success');
+      await loadRegistrations();
+    } catch (err) {
+      showToast(err?.message || 'Failed to approve', 'error');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const rejectReg = async (regId) => {
+    setActioningId(regId);
+    try {
+      await apiClient.patch(`/registrations/${regId}/reject`, { reason: 'Rejected by organizer' });
+      showToast('Registration rejected', 'info');
+      await loadRegistrations();
+    } catch (err) {
+      showToast(err?.message || 'Failed to reject', 'error');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!hackathon) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/hackathons/${hackathon._id}`, {
+        data: { confirmTitle: deleteTitle },
+      });
+      showToast('Hackathon deleted.', 'info');
+      navigate('/app/organizer');
+    } catch (err) {
+      showToast(err?.message || 'Failed to delete', 'error');
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!user) { navigate('/login'); return; }
     setRegistering(true);
     try {
       await apiClient.post('/registrations', { hackathonId: hackathon._id });
       showToast('Registration submitted! Waiting for organizer approval.', 'success');
       navigate('/app/dashboard');
     } catch (err) {
-      showToast(err.message || 'Registration failed', 'error');
+      showToast(err?.message || 'Registration failed', 'error');
     } finally {
       setRegistering(false);
     }
@@ -67,7 +149,7 @@ export function HackathonDetailPage() {
         showToast('Hackathon bookmarked!', 'success');
       }
     } catch (err) {
-      showToast(err.message || 'Failed to toggle bookmark', 'error');
+      showToast(err?.message || 'Failed to toggle bookmark', 'error');
     }
   };
 
@@ -111,8 +193,129 @@ export function HackathonDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/40 to-transparent" />
       </div>
 
-      {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 -mt-20 relative z-10 space-y-8 pb-16">
+
+        {/* ── Organizer Control Panel ── */}
+        {isOwner && (
+          <div className="rounded-2xl border border-accent-primary/30 bg-surface/95 p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-sm font-bold text-accent-primary uppercase tracking-wider">Organizer Control Panel</h2>
+                <p className="text-xs text-text-secondary mt-0.5">Only visible to you as the event owner.</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link to={`/app/organizer/hackathons/${hackathon._id}/edit`}>
+                  <Button size="sm" variant="secondary" className="flex items-center gap-2">
+                    <Edit3 className="w-3.5 h-3.5" /> Edit Hackathon
+                  </Button>
+                </Link>
+                <Button
+                  size="sm"
+                  onClick={toggleRegsPanel}
+                  variant="secondary"
+                  className="flex items-center gap-2"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Registrations
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${regsOpen ? 'rotate-180' : ''}`} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex items-center gap-2 text-status-danger hover:bg-status-danger/10"
+                  onClick={() => setDeleteConfirm(true)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </Button>
+              </div>
+            </div>
+
+            {/* Registrations Queue */}
+            {regsOpen && (
+              <div className="border-t border-border-subtle pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-text-primary">Registration Queue</h3>
+                {regsLoading ? (
+                  <p className="text-xs text-text-secondary">Loading registrations...</p>
+                ) : registrations.length === 0 ? (
+                  <p className="text-xs text-text-secondary">No registrations yet.</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {registrations.map((reg) => (
+                      <div
+                        key={reg._id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-raised px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-text-primary truncate">
+                            {reg.userId?.name || 'Participant'}
+                          </p>
+                          <p className="text-xs text-text-secondary">{reg.userId?.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge status={reg.status} />
+                          {reg.status === 'pending' && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-status-success hover:bg-status-success/90 text-white"
+                                isLoading={actioningId === reg._id}
+                                onClick={() => approveReg(reg._id)}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-status-danger hover:bg-status-danger/10"
+                                isLoading={actioningId === reg._id}
+                                onClick={() => rejectReg(reg._id)}
+                              >
+                                <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Delete Confirm Modal */}
+            {deleteConfirm && (
+              <div className="border-t border-status-danger/30 pt-4 space-y-3">
+                <p className="text-sm text-status-danger font-semibold">⚠ Confirm deletion</p>
+                <p className="text-xs text-text-secondary">
+                  Type <strong className="text-text-primary">{hackathon.title}</strong> to confirm. This action is irreversible.
+                </p>
+                <input
+                  type="text"
+                  value={deleteTitle}
+                  onChange={(e) => setDeleteTitle(e.target.value)}
+                  placeholder={hackathon.title}
+                  className="w-full bg-surface border border-status-danger/40 rounded-md px-3 py-2 text-sm text-text-primary"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-status-danger hover:bg-status-danger/90 text-white"
+                    isLoading={deleting}
+                    disabled={deleteTitle !== hackathon.title}
+                    onClick={handleDelete}
+                  >
+                    Confirm Delete
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setDeleteConfirm(false); setDeleteTitle(''); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Title + CTA Row */}
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -140,7 +343,7 @@ export function HackathonDetailPage() {
             </div>
           </div>
 
-          {/* Action CTAs & Timers */}
+          {/* Action CTA Card */}
           <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-lg space-y-4 w-full md:w-80 shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary uppercase">Prize Pool</span>
@@ -157,25 +360,37 @@ export function HackathonDetailPage() {
               </Link>
             )}
 
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleRegister}
-                isLoading={registering}
-                className="flex-1 font-semibold"
-              >
-                Register Now
-              </Button>
-              <button
-                onClick={toggleBookmark}
-                className="p-2.5 rounded-md border border-border-subtle bg-surface-raised hover:text-accent-primary transition-colors"
-              >
-                <Bookmark className={`w-5 h-5 ${bookmarked ? 'fill-accent-primary text-accent-primary' : ''}`} />
-              </button>
-            </div>
+            {/* Only show Register to participants */}
+            {(!user || user.role === 'participant') && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleRegister}
+                  isLoading={registering}
+                  className="flex-1 font-semibold"
+                >
+                  Register Now
+                </Button>
+                <button
+                  onClick={toggleBookmark}
+                  className="p-2.5 rounded-md border border-border-subtle bg-surface-raised hover:text-accent-primary transition-colors"
+                >
+                  <Bookmark className={`w-5 h-5 ${bookmarked ? 'fill-accent-primary text-accent-primary' : ''}`} />
+                </button>
+              </div>
+            )}
+
+            {/* Organizer quick link */}
+            {isOwner && (
+              <Link to={`/app/organizer/hackathons/${hackathon._id}/edit`} className="block">
+                <Button variant="secondary" className="w-full flex items-center justify-center gap-2">
+                  <Edit3 className="w-4 h-4" /> Edit this Hackathon
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Tabbed Info Grid */}
+        {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <Card className="space-y-4">
@@ -185,7 +400,6 @@ export function HackathonDetailPage() {
               </p>
             </Card>
 
-            {/* Judging Criteria Rubric (Doc 4 §1.8) */}
             <Card className="space-y-4">
               <h3 className="text-lg font-bold text-text-primary">Judging Criteria Rubric</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -201,7 +415,6 @@ export function HackathonDetailPage() {
               </div>
             </Card>
 
-            {/* Rules */}
             {hackathon.rules && (
               <Card className="space-y-3">
                 <h3 className="text-lg font-bold text-text-primary">Hackathon Rules</h3>
@@ -212,7 +425,7 @@ export function HackathonDetailPage() {
             )}
           </div>
 
-          {/* Sidebar Info */}
+          {/* Sidebar */}
           <div className="space-y-6">
             <Card className="space-y-3">
               <h4 className="text-xs font-semibold uppercase text-text-secondary tracking-wider">Themes</h4>

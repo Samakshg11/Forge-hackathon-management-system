@@ -16,8 +16,8 @@ export function NotificationProvider({ children }) {
     if (!user) return;
     try {
       const res = await apiClient.get('/notifications');
-      setNotifications(res.data.notifications);
-      setUnreadCount(res.data.unreadCount);
+      setNotifications(res?.notifications || res || []);
+      setUnreadCount(res?.unreadCount || 0);
     } catch {
       // Ignore background fetch error
     }
