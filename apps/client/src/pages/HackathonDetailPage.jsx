@@ -149,6 +149,14 @@ export function HackathonDetailPage() {
 
             <CountdownTimer targetDate={hackathon.registrationDeadline} label="Registration" />
 
+            {(hackathon.resultsPublished || hackathon.status === 'completed') && (
+              <Link to={`/hackathons/${hackathon.slug}/leaderboard`} className="block">
+                <Button variant="secondary" className="w-full font-semibold flex items-center justify-center gap-2 border-accent-primary/40 text-accent-primary">
+                  <Trophy className="w-4 h-4" /> View Leaderboard
+                </Button>
+              </Link>
+            )}
+
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleRegister}

@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LenisProvider } from './providers/LenisProvider';
 import { ToastProvider } from './components/ui/Toast';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { useAuth } from './contexts/AuthContext';
 
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
@@ -24,12 +25,28 @@ import { BookmarksPage } from './pages/BookmarksPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { DashboardLayout } from './layouts/DashboardLayout';
+
+function DashboardEntry() {
+  const { user } = useAuth();
+
+  if (user?.role === 'organizer') {
+    return <Navigate to="/app/organizer" replace />;
+  }
+
+  return (
+    <DashboardLayout>
+      <RoleDashboardPage />
+    </DashboardLayout>
+  );
+}
 
 export default function App() {
   return (
     <ThemeProvider>
-      {/* <LenisProvider> */}
+      <LenisProvider>
         <AuthProvider>
           <SocketProvider>
             <NotificationProvider>
@@ -44,23 +61,22 @@ export default function App() {
                     <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                     <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
                     <Route path="/hackathons" element={<HackathonListPage />} />
-                    <Route path="/hackathons/:id" element={<HackathonDetailPage />} />
+                    <Route path="/hackathons/:slug" element={<HackathonDetailPage />} />
+                    <Route path="/hackathons/:slug/leaderboard" element={<LeaderboardPage />} />
 
                     {/* Authenticated / Role Gated Routes */}
                     <Route
                       path="/app/dashboard"
                       element={
                         <ProtectedRoute>
-                          <DashboardLayout>
-                            <RoleDashboardPage />
-                          </DashboardLayout>
+                          <DashboardEntry />
                         </ProtectedRoute>
                       }
                     />
                     <Route
                       path="/app/organizer"
                       element={
-                        <ProtectedRoute>
+                        <ProtectedRoute roles={['organizer']}>
                           <DashboardLayout>
                             <RoleDashboardPage />
                           </DashboardLayout>
@@ -70,7 +86,7 @@ export default function App() {
                     <Route
                       path="/app/judge"
                       element={
-                        <ProtectedRoute>
+                        <ProtectedRoute roles={['judge', 'organizer', 'admin']}>
                           <DashboardLayout>
                             <RoleDashboardPage />
                           </DashboardLayout>
@@ -80,7 +96,7 @@ export default function App() {
                     <Route
                       path="/app/admin"
                       element={
-                        <ProtectedRoute>
+                        <ProtectedRoute roles={['admin']}>
                           <DashboardLayout>
                             <RoleDashboardPage />
                           </DashboardLayout>
@@ -117,15 +133,29 @@ export default function App() {
                       path="/app/hackathons/:id/submit"
                       element={
                         <ProtectedRoute roles={['participant', 'admin']}>
-                          <SubmissionFormPage />
+                          <DashboardLayout>
+                            <SubmissionFormPage />
+                          </DashboardLayout>
                         </ProtectedRoute>
                       }
                     />
                     <Route
-                      path="/app/teams/:teamId"
+                      path="/app/teams/:id/submission"
+                      element={
+                        <ProtectedRoute roles={['participant', 'admin']}>
+                          <DashboardLayout>
+                            <SubmissionFormPage />
+                          </DashboardLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app/teams/:id"
                       element={
                         <ProtectedRoute>
-                          <TeamWorkspacePage />
+                          <DashboardLayout>
+                            <TeamWorkspacePage />
+                          </DashboardLayout>
                         </ProtectedRoute>
                       }
                     />
@@ -134,7 +164,9 @@ export default function App() {
                       path="/app/bookmarks"
                       element={
                         <ProtectedRoute>
-                          <BookmarksPage />
+                          <DashboardLayout>
+                            <BookmarksPage />
+                          </DashboardLayout>
                         </ProtectedRoute>
                       }
                     />
@@ -142,7 +174,9 @@ export default function App() {
                       path="/app/certificates"
                       element={
                         <ProtectedRoute>
-                          <CertificatesPage />
+                          <DashboardLayout>
+                            <CertificatesPage />
+                          </DashboardLayout>
                         </ProtectedRoute>
                       }
                     />
@@ -150,7 +184,9 @@ export default function App() {
                       path="/app/profile"
                       element={
                         <ProtectedRoute>
-                          <ProfilePage />
+                          <DashboardLayout>
+                            <ProfilePage />
+                          </DashboardLayout>
                         </ProtectedRoute>
                       }
                     />
@@ -158,15 +194,15 @@ export default function App() {
                     <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
                     <Route path="/dashboard/*" element={<Navigate to="/app/dashboard" replace />} />
 
-                    {/* Fallback redirect */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    {/* Fallback Error 404 Route */}
+                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </div>
               </ToastProvider>
             </NotificationProvider>
           </SocketProvider>
         </AuthProvider>
-      {/* </LenisProvider> */}
+      </LenisProvider>
     </ThemeProvider>
   );
 }

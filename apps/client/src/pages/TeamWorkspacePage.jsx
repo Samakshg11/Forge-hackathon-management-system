@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -11,13 +11,14 @@ import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Skeleton } from '../components/ui/Skeleton';
-import { Users, Send, UserPlus, FileCode, Crown, LogOut } from 'lucide-react';
+import { Users, Send, UserPlus, FileCode, Crown, LogOut, UserX, ShieldAlert, Trash2 } from 'lucide-react';
 
 export function TeamWorkspacePage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { socket, joinRoom, leaveRoom } = useSocket();
   const showToast = useToast();
+  const navigate = useNavigate();
 
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,25 +29,23 @@ export function TeamWorkspacePage() {
 
   const chatBottomRef = useRef(null);
 
-  useEffect(() => {
-    async function loadTeam() {
-      try {
-        const res = await apiClient.get(`/teams/${id}`);
-        setTeam(res.data);
-      } catch {
-        setTeam(null);
-      } finally {
-        setLoading(false);
-      }
+  const loadTeam = async () => {
+    try {
+      const res = await apiClient.get(`/teams/${id}`);
+      setTeam(res.data);
+    } catch {
+      setTeam(null);
+    } finally {
+      setLoading(false);
     }
-    loadTeam();
+  };
 
-    // Join team socket room
+  useEffect(() => {
+    loadTeam();
     joinRoom('team', id);
     return () => leaveRoom('team', id);
   }, [id]);
 
-  // Real-time socket listeners for team channel
   useEffect(() => {
     if (!socket) return;
 
@@ -56,8 +55,8 @@ export function TeamWorkspacePage() {
     };
 
     const handleMemberJoined = (data) => {
-      showToast(`${data.member.name} joined the team!`, 'success');
-      setTeam((prev) => (prev ? { ...prev, members: [...prev.members, { userId: data.member }] } : prev));
+      showToast(`${data.member?.name || 'A member'} joined the team!`, 'success');
+      loadTeam();
     };
 
     socket.on('message:new', handleNewMessage);
@@ -100,6 +99,50 @@ export function TeamWorkspacePage() {
     }
   };
 
+  const handleRemoveMember = async (memberUserId) => {
+    if (!window.confirm('Are you sure you want to remove this member from the team?')) return;
+    try {
+      await apiClient.delete(`/teams/${id}/members/${memberUserId}`);
+      showToast('Member removed from team', 'info');
+      loadTeam();
+    } catch (err) {
+      showToast(err.message || 'Failed to remove member', 'error');
+    }
+  };
+
+  const handleTransferOwnership = async (newOwnerId) => {
+    if (!window.confirm('Are you sure you want to transfer leadership to this member?')) return;
+    try {
+      await apiClient.post(`/teams/${id}/transfer-ownership`, { newOwnerId });
+      showToast('Team leadership transferred successfully!', 'success');
+      loadTeam();
+    } catch (err) {
+      showToast(err.message || 'Failed to transfer ownership', 'error');
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!window.confirm('Are you sure you want to leave this team?')) return;
+    try {
+      await apiClient.delete(`/teams/${id}/members/${user._id}`);
+      showToast('You have left the team', 'info');
+      navigate('/app/dashboard');
+    } catch (err) {
+      showToast(err.message || 'Failed to leave team', 'error');
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) return;
+    try {
+      await apiClient.delete(`/teams/${id}`);
+      showToast('Team deleted', 'info');
+      navigate('/app/dashboard');
+    } catch (err) {
+      showToast(err.message || 'Failed to delete team', 'error');
+    }
+  };
+
   if (loading) return <Skeleton className="h-96 w-full" />;
 
   if (!team) {
@@ -123,15 +166,27 @@ export function TeamWorkspacePage() {
         <div className="flex flex-wrap items-center gap-3">
           {isOwner && (
             <Button onClick={() => setInviteModalOpen(true)} size="sm">
-              <UserPlus className="w-4 h-4" /> Invite Member
+              <UserPlus className="w-4 h-4 mr-1.5" /> Invite Member
             </Button>
           )}
 
           <Link to={`/app/teams/${id}/submission`}>
             <Button variant="secondary" size="sm">
-              <FileCode className="w-4 h-4" /> Project Submission
+              <FileCode className="w-4 h-4 mr-1.5" /> Project Submission
             </Button>
           </Link>
+
+          {!isOwner && (
+            <Button onClick={handleLeaveTeam} variant="secondary" size="sm" className="text-status-danger border-status-danger/30 hover:bg-status-danger/10">
+              <LogOut className="w-4 h-4 mr-1.5" /> Leave Team
+            </Button>
+          )}
+
+          {isOwner && (
+            <Button onClick={handleDeleteTeam} variant="secondary" size="sm" className="text-status-danger border-status-danger/30 hover:bg-status-danger/10">
+              <Trash2 className="w-4 h-4 mr-1.5" /> Delete Team
+            </Button>
+          )}
         </div>
       </div>
 
@@ -141,33 +196,55 @@ export function TeamWorkspacePage() {
         <Card className="space-y-4 lg:col-span-1">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-              <Users className="w-4 h-4 text-accent-primary" /> Members ({team.members.length} / {team.hackathonId?.maxTeamSize || 4})
+              <Users className="w-4 h-4 text-accent-primary" /> Members ({team.members?.length || 0} / {team.hackathonId?.maxTeamSize || 4})
             </h3>
           </div>
 
           <div className="space-y-3">
-            {team.members.map((m) => {
+            {team.members?.map((m) => {
               const memUser = m.userId;
-              const memIsOwner = team.ownerId?._id === memUser?._id || team.ownerId === memUser?._id;
+              const memUserId = memUser?._id || m.userId;
+              const memIsOwner = team.ownerId?._id === memUserId || team.ownerId === memUserId;
+              const isMe = memUserId === user._id;
+
               return (
-                <div key={memUser?._id || m._id} className="flex items-center justify-between p-3 rounded-lg bg-surface-raised border border-border-subtle">
+                <div key={memUserId} className="flex items-center justify-between p-3 rounded-lg bg-surface-raised border border-border-subtle">
                   <div className="flex items-center gap-3">
                     <Avatar src={memUser?.avatarUrl} name={memUser?.name || 'Member'} size="sm" />
                     <div>
                       <h4 className="text-xs font-semibold text-text-primary flex items-center gap-1">
-                        {memUser?.name}
-                        {memIsOwner && <Crown className="w-3 h-3 text-status-warning" />}
+                        {memUser?.name || 'Team Member'}
+                        {memIsOwner && <Crown className="w-3.5 h-3.5 text-amber-400" title="Team Leader" />}
                       </h4>
                       <p className="text-[10px] text-text-secondary">{memUser?.email}</p>
                     </div>
                   </div>
+
+                  {isOwner && !isMe && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleTransferOwnership(memUserId)}
+                        className="p-1 rounded hover:bg-surface text-text-secondary hover:text-amber-400"
+                        title="Transfer Leadership"
+                      >
+                        <Crown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveMember(memUserId)}
+                        className="p-1 rounded hover:bg-surface text-text-secondary hover:text-status-danger"
+                        title="Remove Member"
+                      >
+                        <UserX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </Card>
 
-        {/* Team Chat Channel (Doc 4 §1.24) */}
+        {/* Team Chat Channel */}
         <Card className="lg:col-span-2 flex flex-col h-[500px]">
           <div className="pb-3 border-b border-border-subtle">
             <h3 className="text-sm font-bold text-text-primary">Team Chat Channel</h3>
@@ -234,3 +311,5 @@ export function TeamWorkspacePage() {
     </div>
   );
 }
+
+export default TeamWorkspacePage;

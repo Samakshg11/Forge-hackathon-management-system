@@ -16,9 +16,10 @@ import {
   ListTodo,
 } from 'lucide-react';
 
-export function DashboardLayout() {
+export function DashboardLayout({ children }) {
   const { user } = useAuth();
   const location = useLocation();
+  const content = children || <Outlet />;
 
   // Role-aware sidebar items (Document 2 §1 & Document 6 §2)
   const getNavItems = () => {
@@ -28,7 +29,6 @@ export function DashboardLayout() {
           { label: 'Overview', path: '/app/dashboard', icon: LayoutDashboard },
           { label: 'My Hackathons', path: '/app/organizer', icon: Trophy },
           { label: 'Create Hackathon', path: '/app/organizer/hackathons/new', icon: FileCode },
-          { label: 'Analytics', path: '/app/admin/analytics', icon: BarChart3 },
         ];
       case 'judge':
         return [
@@ -88,7 +88,7 @@ export function DashboardLayout() {
 
         {/* Main Content Outlet */}
         <main className="flex-1 min-w-0">
-          <Outlet />
+          {content}
         </main>
       </div>
     </div>

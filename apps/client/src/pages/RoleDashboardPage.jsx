@@ -13,13 +13,9 @@ import {
   Users,
   FileCode,
   Award,
-  ArrowRight,
   Clock,
-  PlusCircle,
   Sparkles,
   Layers3,
-  Activity,
-  Flag,
   BellRing,
 } from 'lucide-react';
 
@@ -54,8 +50,6 @@ export function RoleDashboardPage() {
     loadDashboard();
   }, [user]);
 
-  const organizerSummary = data?.summary || { total: 0, drafts: 0, published: 0, active: 0, completed: 0, statusCounts: {} };
-  const myHackathons = data?.hackathons || [];
   const isAdminAnalytics = location.pathname.includes('/analytics');
 
   if (loading) {
@@ -63,19 +57,19 @@ export function RoleDashboardPage() {
   }
 
   const heroStats =
-    user.role === 'organizer'
+    user.role === 'admin'
       ? [
-          { label: 'Total hackathons', value: organizerSummary.total, icon: Layers3 },
-          { label: 'Active now', value: organizerSummary.active, icon: Activity },
-          { label: 'Drafts', value: organizerSummary.drafts, icon: FileCode },
-          { label: 'Published', value: organizerSummary.published, icon: Flag },
+          { label: 'Total submissions', value: data?.platformStats?.totalSubmissions || 0, icon: FileCode },
+          { label: 'Total reviews', value: data?.platformStats?.totalReviews || 0, icon: Award },
+          { label: 'Platform users', value: Object.values(data?.platformStats?.usersByRole || {}).reduce((a, b) => a + b, 0), icon: Users },
+          { label: 'Hackathon states', value: Object.values(data?.platformStats?.hackathonsByStatus || {}).reduce((a, b) => a + b, 0), icon: Sparkles },
         ]
-      : user.role === 'admin'
+      : user.role === 'organizer'
         ? [
-            { label: 'Total submissions', value: data?.platformStats?.totalSubmissions || 0, icon: FileCode },
-            { label: 'Total reviews', value: data?.platformStats?.totalReviews || 0, icon: Award },
-            { label: 'Platform users', value: Object.values(data?.platformStats?.usersByRole || {}).reduce((a, b) => a + b, 0), icon: Users },
-            { label: 'Hackathon states', value: Object.values(data?.platformStats?.hackathonsByStatus || {}).reduce((a, b) => a + b, 0), icon: Sparkles },
+            { label: 'Total Hackathons', value: data?.summary?.total || 0, icon: Trophy },
+            { label: 'Published Events', value: data?.summary?.published || 0, icon: Sparkles },
+            { label: 'Active Events', value: data?.summary?.active || 0, icon: Users },
+            { label: 'Draft Events', value: data?.summary?.drafts || 0, icon: Clock },
           ]
         : user.role === 'judge'
           ? [
@@ -93,6 +87,7 @@ export function RoleDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Hero Header */}
       <section className="relative overflow-hidden rounded-3xl border border-border-subtle bg-gradient-to-br from-surface via-surface to-accent-primary/10 p-6 sm:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(0,0,0,0.12),transparent_28%)]" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -106,30 +101,37 @@ export function RoleDashboardPage() {
                 Welcome back, {user.name}
               </h1>
               <p className="mt-3 max-w-xl text-sm text-text-secondary leading-relaxed">
-                Track event health, launch new hackathons, review submissions, and keep the whole workflow moving
-                from one command surface.
+                Track event health, launch new hackathons, review submissions, and keep the whole workflow moving from one command surface.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
               <Badge role={user.role} />
               <span>Profile completion {user.profileCompletion || 0}%</span>
               <span>•</span>
-              <span>{user.role === 'organizer' ? 'Organizer workspace' : user.role === 'admin' ? 'Admin operations' : user.role === 'judge' ? 'Judge queue' : 'Builder dashboard'}</span>
+              <span>
+                {user.role === 'admin'
+                  ? 'Admin operations'
+                  : user.role === 'organizer'
+                    ? 'Organizer control center'
+                    : user.role === 'judge'
+                      ? 'Judge queue'
+                      : 'Builder dashboard'}
+              </span>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {user.role === 'organizer' && (
-              <Link to="/app/organizer/hackathons/new">
-                <Button className="font-semibold shadow-glow">
-                  <PlusCircle className="w-4 h-4" /> Launch hackathon
-                </Button>
-              </Link>
-            )}
             {user.role === 'admin' && !isAdminAnalytics && (
               <Link to="/app/admin/analytics">
                 <Button variant="secondary" className="font-semibold">
                   View analytics
+                </Button>
+              </Link>
+            )}
+            {user.role === 'organizer' && (
+              <Link to="/app/organizer/hackathons/new">
+                <Button className="font-semibold">
+                  Create Hackathon
                 </Button>
               </Link>
             )}
@@ -144,6 +146,7 @@ export function RoleDashboardPage() {
         </div>
       </section>
 
+      {/* Hero Stats */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {heroStats.map((item) => {
           const Icon = item.icon;
@@ -219,17 +222,16 @@ export function RoleDashboardPage() {
       {/* Organizer View */}
       {user.role === 'organizer' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold font-display text-text-primary">My Managed Hackathons</h2>
-            <Link to="/app/organizer/hackathons/new">
-              <Button size="sm">New Hackathon</Button>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold font-display text-text-primary">My Hackathons</h2>
+            <Link to="/app/organizer/hackathons/new" className="text-xs font-semibold text-accent-primary hover:underline">
+              + Create New Hackathon
             </Link>
           </div>
-
-          {!myHackathons || myHackathons.length === 0 ? (
+          {!data?.hackathons || data.hackathons.length === 0 ? (
             <EmptyState
               title="No hackathons created yet"
-              description="Click the button below to launch your first hackathon wizard."
+              description="Launch your first hackathon to start accepting registrations and project submissions."
               action={
                 <Link to="/app/organizer/hackathons/new">
                   <Button size="sm">Create Hackathon</Button>
@@ -237,60 +239,30 @@ export function RoleDashboardPage() {
               }
             />
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {myHackathons.map((h) => (
-                  <Card key={h._id} className="space-y-4 p-5 border border-border-subtle bg-surface/90">
-                    <div className="flex items-center justify-between gap-3">
-                      <Badge status={h.status} />
-                      <span className="text-[11px] uppercase tracking-[0.24em] text-text-secondary">{h.mode}</span>
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-text-primary line-clamp-1">{h.title}</h3>
-                      <p className="mt-2 text-sm text-text-secondary line-clamp-2">
-                        {h.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-text-secondary">
-                      <span>{new Date(h.createdAt).toLocaleDateString()}</span>
-                      <span>{h.theme?.join(' • ')}</span>
-                    </div>
-                    <div className="pt-3 border-t border-border-subtle flex flex-wrap gap-2">
-                      <Link to={`/app/organizer/hackathons/${h._id}/edit`}>
-                        <Button size="sm" variant="secondary">Edit hackathon</Button>
-                      </Link>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {data.hackathons.map((h) => (
+                <Card key={h._id} className="space-y-3 p-5 border border-border-subtle bg-surface/90">
+                  <div className="flex items-center justify-between">
+                    <Badge status={h.status} />
+                    <span className="text-xs font-mono uppercase text-text-secondary">{h.mode}</span>
+                  </div>
+                  <h3 className="text-base font-bold text-text-primary line-clamp-1">{h.title}</h3>
+                  <p className="text-xs text-text-secondary line-clamp-2">{h.description}</p>
+                  <div className="pt-3 border-t border-border-subtle flex items-center justify-between gap-2">
+                    <span className="text-xs text-text-secondary">
+                      {new Date(h.startDate).toLocaleDateString()} — {new Date(h.endDate).toLocaleDateString()}
+                    </span>
+                    <div className="flex items-center gap-2">
                       <Link to={`/hackathons/${h.slug}`}>
-                        <Button size="sm" variant="secondary">View public page</Button>
+                        <Button size="sm" variant="ghost">View</Button>
+                      </Link>
+                      <Link to={`/app/organizer/hackathons/${h._id}/edit`}>
+                        <Button size="sm" variant="secondary">Edit</Button>
                       </Link>
                     </div>
-                  </Card>
-                ))}
-              </div>
-
-              <Card className="p-5 border border-border-subtle bg-surface/90 space-y-4">
-                <div>
-                  <h3 className="text-base font-bold text-text-primary">Portfolio at a glance</h3>
-                  <p className="mt-1 text-sm text-text-secondary">Drafts, live events, and completed hackathons in one view.</p>
-                </div>
-                <div className="space-y-3">
-                  {Object.entries(organizerSummary.statusCounts || {})
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([status, count]) => (
-                      <div key={status}>
-                        <div className="mb-1 flex items-center justify-between text-xs text-text-secondary">
-                          <span className="capitalize">{status.replaceAll('_', ' ')}</span>
-                          <span>{count}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-surface-raised overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-accent-primary to-accent-secondary"
-                            style={{ width: `${Math.max(10, Math.min(100, (count / Math.max(1, organizerSummary.total)) * 100))}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </Card>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
         </div>
@@ -345,7 +317,10 @@ export function RoleDashboardPage() {
               <StatCounter value={data?.platformStats?.totalReviews || 0} label="Total Reviews" />
             </Card>
             <Card className="p-6">
-              <StatCounter value={Object.values(data?.platformStats?.usersByRole || {}).reduce((a, b) => a + b, 0)} label="Total Platform Users" />
+              <StatCounter
+                value={Object.values(data?.platformStats?.usersByRole || {}).reduce((a, b) => a + b, 0)}
+                label="Total Platform Users"
+              />
             </Card>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -359,7 +334,10 @@ export function RoleDashboardPage() {
                       <span>{count}</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-raised overflow-hidden">
-                      <div className="h-full rounded-full bg-accent-primary" style={{ width: `${Math.max(8, count * 18)}%` }} />
+                      <div
+                        className="h-full rounded-full bg-accent-primary"
+                        style={{ width: `${Math.max(8, count * 18)}%` }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -376,7 +354,10 @@ export function RoleDashboardPage() {
                       <span>{count}</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-raised overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-accent-secondary to-accent-primary" style={{ width: `${Math.max(8, count * 18)}%` }} />
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-accent-secondary to-accent-primary"
+                        style={{ width: `${Math.max(8, count * 18)}%` }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -399,3 +380,5 @@ export function RoleDashboardPage() {
     </div>
   );
 }
+
+export default RoleDashboardPage;

@@ -32,6 +32,7 @@ export function SubmissionFormPage() {
     liveDemoUrl: '',
     techStack: '',
     presentationUrl: '',
+    screenshotUrls: '',
   });
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function SubmissionFormPage() {
             liveDemoUrl: subRes.data.liveDemoUrl || '',
             techStack: subRes.data.techStack?.join(', ') || '',
             presentationUrl: subRes.data.presentationUrl || '',
+            screenshotUrls: subRes.data.screenshotUrls?.join(', ') || '',
           });
         }
       } catch {
@@ -74,9 +76,11 @@ export function SubmissionFormPage() {
       setAutosaveStatus('saving');
       try {
         const stack = formData.techStack.split(',').map((s) => s.trim()).filter(Boolean);
+        const screenshots = formData.screenshotUrls.split(',').map((s) => s.trim()).filter(Boolean);
         const res = await apiClient.patch(`/submissions/${submission._id}`, {
           ...formData,
           techStack: stack,
+          screenshotUrls: screenshots,
         });
         setSubmission(res.data);
         setAutosaveStatus('saved');
@@ -94,10 +98,12 @@ export function SubmissionFormPage() {
     try {
       const teamRes = await apiClient.get(`/teams/${teamId}`);
       const stack = formData.techStack.split(',').map((s) => s.trim()).filter(Boolean);
+      const screenshots = formData.screenshotUrls.split(',').map((s) => s.trim()).filter(Boolean);
 
       const res = await apiClient.post('/submissions', {
         ...formData,
         techStack: stack,
+        screenshotUrls: screenshots,
         teamId,
         hackathonId: teamRes.data.hackathonId._id,
       });
@@ -240,6 +246,14 @@ export function SubmissionFormPage() {
             onChange={(e) => setFormData({ ...formData, presentationUrl: e.target.value })}
           />
 
+          <Input
+            label="Screenshot Image URLs (comma-separated)"
+            placeholder="https://example.com/shot1.png, https://example.com/shot2.png"
+            disabled={isLocked}
+            value={formData.screenshotUrls}
+            onChange={(e) => setFormData({ ...formData, screenshotUrls: e.target.value })}
+          />
+
           {!submission && (
             <Button type="submit" isLoading={saving} className="w-full">
               Create Submission Draft
@@ -265,3 +279,5 @@ export function SubmissionFormPage() {
     </div>
   );
 }
+
+export default SubmissionFormPage;
