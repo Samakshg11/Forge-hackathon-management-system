@@ -15,9 +15,9 @@ export async function submitReview({ submissionId, scores, feedback }, judgeId, 
     throw new ForbiddenError('You are not assigned to review this submission');
   }
 
-  // Check review deadline
+  // Check review deadline (only if set)
   const hackathon = submission.hackathonId;
-  if (new Date() > new Date(hackathon.reviewDeadline)) {
+  if (hackathon.reviewDeadline && new Date() > new Date(hackathon.reviewDeadline)) {
     throw new ValidationError('Review deadline has passed for this hackathon');
   }
 

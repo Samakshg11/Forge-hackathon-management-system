@@ -30,6 +30,7 @@ export function RoleDashboardPage() {
   const showToast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [assignTarget, setAssignTarget] = useState(null); // hackathon being assigned judges
 
   useEffect(() => {
     async function loadDashboard() {
@@ -305,6 +306,15 @@ export function RoleDashboardPage() {
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* Judge Assignment Panel */}
+          {assignTarget && (
+            <JudgeAssignPanel
+              hackathon={assignTarget}
+              onClose={() => setAssignTarget(null)}
+              showToast={showToast}
+            />
           )}
         </div>
       )}
