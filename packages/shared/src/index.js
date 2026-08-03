@@ -124,7 +124,9 @@ export const hackathonBaseSchema = z.object({
 });
 
 export const createHackathonSchema = hackathonBaseSchema;
-export const updateHackathonSchema = hackathonBaseSchema.partial();
+export const updateHackathonSchema = hackathonBaseSchema.partial().extend({
+  status: HackathonStatus.optional(),
+});
 
 /**
  * Validates that hackathon dates are in a logical order.

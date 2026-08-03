@@ -243,9 +243,34 @@ export function RoleDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {data.hackathons.map((h) => (
                 <Card key={h._id} className="space-y-3 p-5 border border-border-subtle bg-surface/90">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <Badge status={h.status} />
-                    <span className="text-xs font-mono uppercase text-text-secondary">{h.mode}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] uppercase font-mono text-text-secondary">Status:</span>
+                      <select
+                        value={h.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value;
+                          try {
+                            await apiClient.patch(`/hackathons/${h._id}`, { status: newStatus });
+                            showToast(`Status updated to ${newStatus}`, 'success');
+                            const mine = await apiClient.get('/hackathons/mine');
+                            setData(mine);
+                          } catch (err) {
+                            showToast(err?.message || 'Failed to update status', 'error');
+                          }
+                        }}
+                        className="bg-surface-raised border border-border-subtle rounded text-xs font-semibold text-text-primary px-2 py-1 focus:outline-none focus:border-accent-primary"
+                      >
+                        <option value="draft">draft</option>
+                        <option value="published">published</option>
+                        <option value="registration_open">registration_open</option>
+                        <option value="registration_closed">registration_closed</option>
+                        <option value="submissions_open">submissions_open</option>
+                        <option value="judging">judging</option>
+                        <option value="completed">completed</option>
+                      </select>
+                    </div>
                   </div>
                   <h3 className="text-base font-bold text-text-primary line-clamp-1">{h.title}</h3>
                   <p className="text-xs text-text-secondary line-clamp-2">{h.description}</p>

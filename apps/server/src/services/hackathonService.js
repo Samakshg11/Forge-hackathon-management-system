@@ -90,10 +90,14 @@ export async function updateHackathon(id, data, requestingUser) {
     throw new ForbiddenError('You can only edit your own hackathons');
   }
 
-  // Date ordering validation
-  const merged = { ...hackathon.toObject(), ...data };
-  const dateErrors = validateHackathonDates(merged);
-  if (dateErrors.length) throw new ValidationError('Invalid dates', dateErrors);
+  // Date ordering validation (only if dates are being updated)
+  const dateKeys = ['registrationDeadline', 'submissionStart', 'submissionDeadline', 'reviewDeadline', 'startDate', 'endDate'];
+  const hasDateUpdate = dateKeys.some((k) => data[k] !== undefined);
+  if (hasDateUpdate) {
+    const merged = { ...hackathon.toObject(), ...data };
+    const dateErrors = validateHackathonDates(merged);
+    if (dateErrors.length) throw new ValidationError('Invalid dates', dateErrors);
+  }
 
   // maxTeamSize decrease guard (Doc 4 Rule 31)
   if (data.maxTeamSize !== undefined && data.maxTeamSize < hackathon.maxTeamSize) {

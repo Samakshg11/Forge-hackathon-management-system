@@ -71,6 +71,14 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
+  // Mongoose CastError (invalid ObjectId)
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_ID', message: `Invalid ${err.path}: ${err.value}` },
+    });
+  }
+
   // Mongoose validation error
   if (err.name === 'ValidationError') {
     return res.status(400).json({

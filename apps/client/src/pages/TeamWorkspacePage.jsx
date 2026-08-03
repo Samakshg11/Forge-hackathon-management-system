@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -20,6 +20,11 @@ export function TeamWorkspacePage() {
   const showToast = useToast();
   const navigate = useNavigate();
 
+  const [searchParams] = useSearchParams();
+  const hackathonId = searchParams.get('hackathonId');
+  const [teamName, setTeamName] = useState('');
+  const [creating, setCreating] = useState(false);
+
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
@@ -30,9 +35,13 @@ export function TeamWorkspacePage() {
   const chatBottomRef = useRef(null);
 
   const loadTeam = async () => {
+    if (!id || id === 'new') {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiClient.get(`/teams/${id}`);
-      setTeam(res.data);
+      setTeam(res);
     } catch {
       setTeam(null);
     } finally {
@@ -41,9 +50,15 @@ export function TeamWorkspacePage() {
   };
 
   useEffect(() => {
-    loadTeam();
-    joinRoom('team', id);
-    return () => leaveRoom('team', id);
+    if (id && id !== 'new') {
+      loadTeam();
+      joinRoom('team', id);
+    } else {
+      setLoading(false);
+    }
+    return () => {
+      if (id && id !== 'new') leaveRoom('team', id);
+    };
   }, [id]);
 
   useEffect(() => {
@@ -143,7 +158,46 @@ export function TeamWorkspacePage() {
     }
   };
 
+
+
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    if (!teamName.trim() || !hackathonId) return;
+    setCreating(true);
+    try {
+      const res = await apiClient.post('/teams', { name: teamName, hackathonId });
+      showToast('Team created successfully!', 'success');
+      navigate(`/app/teams/${res._id || res.data?._id}`);
+    } catch (err) {
+      showToast(err?.message || 'Failed to create team', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) return <Skeleton className="h-96 w-full" />;
+
+  if (id === 'new') {
+    return (
+      <Card className="max-w-lg mx-auto p-6 space-y-6">
+        <h2 className="text-xl font-bold font-display text-text-primary">Create a New Team</h2>
+        <form onSubmit={handleCreateTeam} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">Team Name</label>
+            <Input
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+              placeholder="e.g. Cyber Warriors"
+              required
+            />
+          </div>
+          <Button type="submit" isLoading={creating} className="w-full font-semibold">
+            Create Team
+          </Button>
+        </form>
+      </Card>
+    );
+  }
 
   if (!team) {
     return <div className="text-center py-12 text-text-secondary">Team not found or access denied.</div>;

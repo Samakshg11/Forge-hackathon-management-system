@@ -204,6 +204,31 @@ export function HackathonDetailPage() {
                 <p className="text-xs text-text-secondary mt-0.5">Only visible to you as the event owner.</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-surface-raised border border-border-subtle rounded-md px-2.5 py-1">
+                  <span className="text-xs font-mono uppercase text-text-secondary">Status:</span>
+                  <select
+                    value={hackathon.status}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      try {
+                        const updated = await apiClient.patch(`/hackathons/${hackathon._id}`, { status: newStatus });
+                        setHackathon(updated);
+                        showToast(`Status changed to ${newStatus}`, 'success');
+                      } catch (err) {
+                        showToast(err?.message || 'Failed to update status', 'error');
+                      }
+                    }}
+                    className="bg-transparent text-xs font-semibold text-text-primary focus:outline-none cursor-pointer"
+                  >
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                    <option value="registration_open">registration_open</option>
+                    <option value="registration_closed">registration_closed</option>
+                    <option value="submissions_open">submissions_open</option>
+                    <option value="judging">judging</option>
+                    <option value="completed">completed</option>
+                  </select>
+                </div>
                 <Link to={`/app/organizer/hackathons/${hackathon._id}/edit`}>
                   <Button size="sm" variant="secondary" className="flex items-center gap-2">
                     <Edit3 className="w-3.5 h-3.5" /> Edit Hackathon
