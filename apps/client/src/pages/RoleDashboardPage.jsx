@@ -18,6 +18,10 @@ import {
   Sparkles,
   Layers3,
   BellRing,
+  UserPlus,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from 'lucide-react';
 
 export function RoleDashboardPage() {
@@ -287,6 +291,15 @@ export function RoleDashboardPage() {
                       <Link to={`/app/organizer/hackathons/${h._id}/edit`}>
                         <Button size="sm" variant="secondary">Edit</Button>
                       </Link>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setAssignTarget(assignTarget?._id === h._id ? null : h)}
+                        className="flex items-center gap-1"
+                      >
+                        <UserPlus className="h-3 w-3" />
+                        Assign Judges
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -531,6 +544,148 @@ function JudgeReviewQueue({ data, onReviewSubmitted }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function JudgeAssignPanel({ hackathon, onClose, showToast }) {
+  const [submissions, setSubmissions] = useState([]);
+  const [judges, setJudges] = useState([]);
+  const [assignments, setAssignments] = useState({}); // { submissionId: Set<judgeId> }
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const [subs, judgeList] = await Promise.all([
+          apiClient.get(`/hackathons/${hackathon._id}/submissions`),
+          apiClient.get('/users/judges'),
+        ]);
+        const subsArr = Array.isArray(subs) ? subs : subs?.submissions || subs?.data || [];
+        const judgesArr = Array.isArray(judgeList) ? judgeList : judgeList?.judges || judgeList?.data || [];
+        setSubmissions(subsArr);
+        setJudges(judgesArr);
+        // Pre-populate existing assignments
+        const init = {};
+        subsArr.forEach((s) => {
+          init[s._id] = new Set((s.assignedJudgeIds || []).map((j) => j?.toString?.() || j));
+        });
+        setAssignments(init);
+      } catch (err) {
+        showToast(err?.message || 'Failed to load data', 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [hackathon._id]);
+
+  const toggleJudge = (submissionId, judgeId) => {
+    setAssignments((prev) => {
+      const current = new Set(prev[submissionId] || []);
+      if (current.has(judgeId)) current.delete(judgeId);
+      else current.add(judgeId);
+      return { ...prev, [submissionId]: current };
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const assignmentPayload = Object.entries(assignments).map(([submissionId, judgeSet]) => ({
+        submissionId,
+        judgeIds: Array.from(judgeSet),
+      }));
+      await apiClient.post(`/hackathons/${hackathon._id}/assign-judges`, { assignments: assignmentPayload });
+      showToast('Judges assigned successfully!', 'success');
+      onClose();
+    } catch (err) {
+      showToast(err?.message || 'Failed to assign judges', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-surface border border-border-subtle rounded-xl w-full max-w-3xl p-6 space-y-5 my-8">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-text-primary">Assign Judges</h3>
+            <p className="text-xs text-text-secondary mt-0.5">{hackathon.title}</p>
+          </div>
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="py-12 text-center text-sm text-text-secondary">Loading submissions and judges…</div>
+        ) : submissions.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-sm text-text-secondary">No submissions found for this hackathon yet.</p>
+            <p className="text-xs text-text-secondary mt-1">Participants must submit their projects first.</p>
+          </div>
+        ) : judges.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-sm text-text-secondary">No judges registered yet.</p>
+            <p className="text-xs text-text-secondary mt-1">Ask users to register with the judge role.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-text-secondary">
+              Click judge names to toggle assignment. Each submission can have multiple judges.
+            </p>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {submissions.map((sub) => (
+                <div key={sub._id} className="bg-surface-raised border border-border-subtle rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary">{sub.projectName}</p>
+                      <p className="text-xs text-text-secondary">{sub.teamId?.name || 'Unknown team'}</p>
+                    </div>
+                    <span className="text-[10px] font-mono bg-surface border border-border-subtle rounded px-2 py-0.5 text-text-secondary">
+                      {(assignments[sub._id]?.size || 0)} judge{(assignments[sub._id]?.size || 0) !== 1 ? 's' : ''} assigned
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {judges.map((judge) => {
+                      const isAssigned = assignments[sub._id]?.has(judge._id);
+                      return (
+                        <button
+                          key={judge._id}
+                          onClick={() => toggleJudge(sub._id, judge._id)}
+                          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all border ${
+                            isAssigned
+                              ? 'bg-accent-primary/20 border-accent-primary text-accent-primary'
+                              : 'bg-surface border-border-subtle text-text-secondary hover:border-accent-primary/50 hover:text-text-primary'
+                          }`}
+                        >
+                          <span className="w-5 h-5 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-[9px] font-bold uppercase">
+                            {judge.name?.[0] || 'J'}
+                          </span>
+                          {judge.name}
+                          {isAssigned && <span className="ml-0.5">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-2 border-t border-border-subtle">
+          <Button onClick={handleSave} isLoading={saving} disabled={loading || saving} className="flex-1 font-semibold">
+            Save Assignments
+          </Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
     </div>
   );
 }
