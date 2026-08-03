@@ -95,6 +95,7 @@ export function SignupPage() {
             >
               <option value="participant">Participant (Builder)</option>
               <option value="organizer">Organizer (Event Runner)</option>
+              <option value="judge">Judge (Evaluator)</option>
             </select>
           </div>
 
