@@ -23,6 +23,7 @@ import {
 export function RoleDashboardPage() {
   const { user } = useAuth();
   const location = useLocation();
+  const showToast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 

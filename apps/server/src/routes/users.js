@@ -31,6 +31,16 @@ router.patch('/me', requireAuth, validate(updateProfileSchema), async (req, res,
   } catch (err) { next(err); }
 });
 
+// GET /api/v1/users/judges — list all judges (organizer/admin only)
+router.get('/judges', requireAuth, requireRole('organizer', 'admin'), async (req, res, next) => {
+  try {
+    const judges = await User.find({ role: 'judge' })
+      .select('name email avatarUrl bio')
+      .lean();
+    res.json({ success: true, data: judges });
+  } catch (err) { next(err); }
+});
+
 // GET /api/v1/users/:username/portfolio — public
 router.get('/:username/portfolio', async (req, res, next) => {
   try {

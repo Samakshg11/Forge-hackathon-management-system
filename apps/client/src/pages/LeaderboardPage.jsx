@@ -22,7 +22,7 @@ export function LeaderboardPage() {
       setErrorMsg(null);
       try {
         const res = await apiClient.get(`/leaderboard/${slug}`);
-        setData(res.data);
+        setData(res);
       } catch (err) {
         setErrorMsg(err.message || 'Results have not been published for this hackathon yet.');
         setData(null);

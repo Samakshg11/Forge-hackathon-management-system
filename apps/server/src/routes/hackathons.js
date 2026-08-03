@@ -119,4 +119,35 @@ router.delete(
   }
 );
 
+// GET /api/v1/hackathons/:id/submissions — Get all submissions for a hackathon (organizer/admin)
+router.get(
+  '/:id/submissions',
+  requireAuth,
+  requireRole('organizer', 'admin'),
+  async (req, res, next) => {
+    try {
+      const Submission = (await import('../models/Submission.js')).default;
+      const submissions = await Submission.find({ hackathonId: req.params.id })
+        .populate('teamId', 'name')
+        .select('projectName assignedJudgeIds status teamId githubUrl')
+        .lean();
+      res.json({ success: true, data: submissions });
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/v1/hackathons/:id/assign-judges — Bulk assign judges to submissions (organizer/admin)
+router.post(
+  '/:id/assign-judges',
+  requireAuth,
+  requireRole('organizer', 'admin'),
+  async (req, res, next) => {
+    try {
+      const reviewService = await import('../services/reviewService.js');
+      const result = await reviewService.assignJudgesToSubmissions(req.params.id, req.body.assignments);
+      res.json({ success: true, data: result });
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;
