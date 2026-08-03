@@ -100,18 +100,29 @@ export function SubmissionFormPage() {
       const stack = formData.techStack.split(',').map((s) => s.trim()).filter(Boolean);
       const screenshots = formData.screenshotUrls.split(',').map((s) => s.trim()).filter(Boolean);
 
-      const res = await apiClient.post('/submissions', {
+      const rawPayload = {
         ...formData,
         techStack: stack,
         screenshotUrls: screenshots,
         teamId,
         hackathonId: teamRes.hackathonId?._id || teamRes.hackathonId,
-      });
+      };
+
+      // Strip empty optional strings
+      const payload = Object.fromEntries(
+        Object.entries(rawPayload).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
+      );
+
+      const res = await apiClient.post('/submissions', payload);
 
       setSubmission(res);
       showToast('Draft submission created successfully!', 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to create draft', 'error');
+      if (err.details && Array.isArray(err.details)) {
+        showToast(`Validation error: ${err.details.join(', ')}`, 'error');
+      } else {
+        showToast(err.message || 'Failed to create draft', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -122,7 +133,7 @@ export function SubmissionFormPage() {
     setSubmitting(true);
     try {
       const res = await apiClient.post(`/submissions/${submission._id}/submit`);
-      setSubmission(res.data);
+      setSubmission(res);
       showToast('Project submitted successfully!', 'success');
     } catch (err) {
       showToast(err.message || 'Submission failed', 'error');
