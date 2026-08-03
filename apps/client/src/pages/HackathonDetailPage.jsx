@@ -34,6 +34,7 @@ export function HackathonDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteTitle, setDeleteTitle] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [publishingResults, setPublishingResults] = useState(false);
 
   useEffect(() => {
     async function loadHackathon() {
@@ -119,6 +120,20 @@ export function HackathonDetailPage() {
     } finally {
       setDeleting(false);
       setDeleteConfirm(false);
+    }
+  };
+
+  const handlePublishResults = async () => {
+    if (!window.confirm('Publish results? This will generate certificates and notify all participants.')) return;
+    setPublishingResults(true);
+    try {
+      await apiClient.post(`/leaderboard/${hackathon._id}/publish-results`);
+      showToast('Results published! Certificates generated for all participants.', 'success');
+      setHackathon((prev) => ({ ...prev, resultsPublished: true, status: 'completed' }));
+    } catch (err) {
+      showToast(err?.message || 'Failed to publish results', 'error');
+    } finally {
+      setPublishingResults(false);
     }
   };
 
@@ -244,6 +259,24 @@ export function HackathonDetailPage() {
                   Registrations
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform ${regsOpen ? 'rotate-180' : ''}`} />
                 </Button>
+                {!hackathon.resultsPublished && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex items-center gap-2 text-status-success border-status-success/30 hover:bg-status-success/10"
+                    isLoading={publishingResults}
+                    onClick={handlePublishResults}
+                  >
+                    <Trophy className="w-3.5 h-3.5" /> Publish Results
+                  </Button>
+                )}
+                {hackathon.resultsPublished && (
+                  <Link to={`/hackathons/${hackathon.slug}/leaderboard`}>
+                    <Button size="sm" variant="secondary" className="flex items-center gap-2">
+                      <Trophy className="w-3.5 h-3.5" /> View Leaderboard
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
