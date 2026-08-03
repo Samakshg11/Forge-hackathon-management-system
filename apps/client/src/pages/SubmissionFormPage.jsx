@@ -37,13 +37,13 @@ export function SubmissionFormPage() {
 
   const fillDemoData = () => {
     setFormData({
-      projectName: 'Forge AI Platform',
-      problemStatement: 'Managing hackathons manually across email, spreadsheets, and discord is fragmented and error-prone.',
-      solution: 'An all-in-one hackathon operating system featuring team formation, auto-saved submissions, blind judging rubrics, and verifiable certificates.',
-      githubUrl: 'https://github.com/example/forge-hackathon-platform',
-      liveDemoUrl: 'https://forge-demo.vercel.app',
+      projectName: 'EcoTrack — Sustainability Monitor',
+      problemStatement: 'Organizations lack real-time visibility into their carbon footprint and sustainability metrics.',
+      solution: 'A web dashboard that aggregates IoT sensor data and provides AI-powered recommendations to reduce energy usage.',
+      githubUrl: 'https://github.com/example/ecotrack-sustainability',
+      liveDemoUrl: 'https://ecotrack-demo.vercel.app',
       techStack: 'React, Node.js, Express, MongoDB, Socket.io, Tailwind CSS',
-      presentationUrl: 'https://slides.com/demo/forge-pitch',
+      presentationUrl: 'https://slides.com/demo/ecotrack-pitch',
       screenshotUrls: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c',
     });
     showToast('Demo data filled!', 'info');
@@ -161,7 +161,7 @@ export function SubmissionFormPage() {
     if (!submission) return;
     try {
       const res = await apiClient.get(`/submissions/${submission._id}/versions`);
-      setVersions(res.data);
+      setVersions(Array.isArray(res) ? res : res?.versions || []);
       setShowVersions(true);
     } catch (err) {
       showToast(err.message || 'Failed to fetch version history', 'error');

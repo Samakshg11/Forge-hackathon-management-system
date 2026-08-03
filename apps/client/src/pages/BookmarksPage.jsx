@@ -15,7 +15,7 @@ export function BookmarksPage() {
     async function loadBookmarks() {
       try {
         const res = await apiClient.get('/bookmarks');
-        setBookmarks(res.data);
+        setBookmarks(Array.isArray(res) ? res : res?.bookmarks || []);
       } catch {
         setBookmarks([]);
       } finally {

@@ -14,7 +14,7 @@ export function CertificatesPage() {
     async function loadCerts() {
       try {
         const res = await apiClient.get('/certificates/mine');
-        setCerts(res.data);
+        setCerts(Array.isArray(res) ? res : res?.certificates || []);
       } catch {
         setCerts([]);
       } finally {

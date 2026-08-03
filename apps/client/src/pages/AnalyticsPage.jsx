@@ -27,7 +27,7 @@ export function AnalyticsPage() {
     async function loadAnalytics() {
       try {
         const res = await apiClient.get('/analytics/platform');
-        setData(res.data);
+        setData(res);
       } catch {
         setData(null);
       } finally {
