@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ui/Toast';
 import apiClient from '../services/apiClient';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -296,34 +297,10 @@ export function RoleDashboardPage() {
 
       {/* Judge View */}
       {user.role === 'judge' && (
-        <div className="space-y-6">
-          <h2 className="text-lg font-bold font-display text-text-primary">Assigned Submissions Queue</h2>
-          {!data?.assignments || data.assignments.length === 0 ? (
-            <EmptyState
-              title="No assigned submissions"
-              description="Organizers have not assigned projects to your review queue yet."
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.assignments.map((sub) => (
-                <Card key={sub._id} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge status={sub.hasReviewed ? 'approved' : 'pending'}>
-                      {sub.hasReviewed ? 'Reviewed' : 'Pending Review'}
-                    </Badge>
-                    <span className="text-xs text-text-secondary">{sub.hackathonId?.title}</span>
-                  </div>
-                  <h3 className="text-base font-bold text-text-primary">{sub.projectName}</h3>
-                  <div className="pt-2 border-t border-border-subtle">
-                    <Button size="sm" className="w-full" variant="secondary" disabled>
-                      {sub.hasReviewed ? 'Reviewed' : 'Review screen coming soon'}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+        <JudgeReviewQueue data={data} onReviewSubmitted={async () => {
+          const assignments = await apiClient.get('/judge/assignments');
+          setData({ assignments: Array.isArray(assignments) ? assignments : assignments?.assignments || [] });
+        }} />
       )}
 
       {/* Admin View */}
@@ -401,6 +378,156 @@ export function RoleDashboardPage() {
               <p className="mt-1 text-sm text-text-secondary">{data.assignments.length} submissions in your queue.</p>
             </Card>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JudgeReviewQueue({ data, onReviewSubmitted }) {
+  const showToast = useToast();
+  const [selectedSub, setSelectedSub] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [scores, setScores] = useState({
+    innovation: 8,
+    technicalComplexity: 8,
+    ui: 8,
+    functionality: 8,
+    scalability: 8,
+    documentation: 8,
+    presentation: 8,
+  });
+  const [feedback, setFeedback] = useState('');
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!selectedSub) return;
+    setSubmitting(true);
+    try {
+      await apiClient.post('/reviews', {
+        submissionId: selectedSub._id,
+        scores,
+        feedback: feedback || 'Great work on this submission!',
+      });
+      showToast('Review submitted successfully!', 'success');
+      setSelectedSub(null);
+      onReviewSubmitted();
+    } catch (err) {
+      showToast(err?.message || 'Failed to submit review', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const assignments = data?.assignments || [];
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold font-display text-text-primary">Assigned Submissions Queue</h2>
+      {assignments.length === 0 ? (
+        <EmptyState
+          title="No assigned submissions"
+          description="Organizers have not assigned projects to your review queue yet."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {assignments.map((sub) => (
+            <Card key={sub._id} className="space-y-3 p-5 border border-border-subtle bg-surface/90">
+              <div className="flex items-center justify-between">
+                <Badge status={sub.hasReviewed ? 'approved' : 'pending'}>
+                  {sub.hasReviewed ? 'Reviewed' : 'Pending Review'}
+                </Badge>
+                <span className="text-xs text-text-secondary">{sub.hackathonId?.title}</span>
+              </div>
+              <h3 className="text-base font-bold text-text-primary">{sub.projectName}</h3>
+              <p className="text-xs text-text-secondary line-clamp-2">{sub.problemStatement || sub.solution}</p>
+              <div className="pt-2 border-t border-border-subtle flex items-center justify-between gap-2">
+                <a
+                  href={sub.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-accent-primary hover:underline font-mono"
+                >
+                  GitHub Repository ↗
+                </a>
+                <Button
+                  size="sm"
+                  variant={sub.hasReviewed ? 'ghost' : 'secondary'}
+                  disabled={sub.hasReviewed}
+                  onClick={() => {
+                    setSelectedSub(sub);
+                    setFeedback('');
+                  }}
+                >
+                  {sub.hasReviewed ? 'Completed' : 'Review & Score'}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {selectedSub && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface border border-border-subtle rounded-xl max-w-xl w-full p-6 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-text-primary">Blind Review: {selectedSub.projectName}</h3>
+                <p className="text-xs text-text-secondary">Blind Evaluation — Team identity is hidden</p>
+              </div>
+              <button
+                onClick={() => setSelectedSub(null)}
+                className="text-text-secondary hover:text-text-primary font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-accent-primary">Rubric Scores (1 - 10)</h4>
+                {Object.keys(scores).map((key) => (
+                  <div key={key} className="flex items-center justify-between gap-4 bg-surface-raised p-2.5 rounded-md border border-border-subtle">
+                    <span className="text-xs font-semibold capitalize text-text-primary">{key.replace(/([A-Z])/g, ' $1')}</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        value={scores[key]}
+                        onChange={(e) => setScores({ ...scores, [key]: Number(e.target.value) })}
+                        className="w-28 accent-accent-primary"
+                      />
+                      <span className="text-xs font-bold font-mono text-accent-primary w-6 text-right">{scores[key]}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">Qualitative Feedback</label>
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Provide constructive feedback for the team..."
+                  rows={3}
+                  className="w-full bg-surface-raised border border-border-subtle rounded-md p-2.5 text-xs text-text-primary"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" isLoading={submitting} className="flex-1 font-semibold">
+                  Submit Final Review
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setSelectedSub(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -35,6 +35,20 @@ export function SubmissionFormPage() {
     screenshotUrls: '',
   });
 
+  const fillDemoData = () => {
+    setFormData({
+      projectName: 'Forge AI Platform',
+      problemStatement: 'Managing hackathons manually across email, spreadsheets, and discord is fragmented and error-prone.',
+      solution: 'An all-in-one hackathon operating system featuring team formation, auto-saved submissions, blind judging rubrics, and verifiable certificates.',
+      githubUrl: 'https://github.com/example/forge-hackathon-platform',
+      liveDemoUrl: 'https://forge-demo.vercel.app',
+      techStack: 'React, Node.js, Express, MongoDB, Socket.io, Tailwind CSS',
+      presentationUrl: 'https://slides.com/demo/forge-pitch',
+      screenshotUrls: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c',
+    });
+    showToast('Demo data filled!', 'info');
+  };
+
   useEffect(() => {
     async function loadSubmission() {
       try {
@@ -119,7 +133,8 @@ export function SubmissionFormPage() {
       showToast('Draft submission created successfully!', 'success');
     } catch (err) {
       if (err.details && Array.isArray(err.details)) {
-        showToast(`Validation error: ${err.details.join(', ')}`, 'error');
+        const msgs = err.details.map((d) => (typeof d === 'object' && d ? `${d.field || 'field'}: ${d.message}` : String(d)));
+        showToast(`Validation error: ${msgs.join('; ')}`, 'error');
       } else {
         showToast(err.message || 'Failed to create draft', 'error');
       }
@@ -172,6 +187,12 @@ export function SubmissionFormPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {!isLocked && (
+            <Button size="sm" variant="secondary" onClick={fillDemoData} className="text-accent-primary border-accent-primary/30">
+              ⚡ Fill Demo Data
+            </Button>
+          )}
+
           {submission && (
             <button
               onClick={fetchVersions}

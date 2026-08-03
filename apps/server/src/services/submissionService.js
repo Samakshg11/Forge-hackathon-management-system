@@ -26,10 +26,16 @@ export async function createDraftSubmission(userId, data) {
     throw new ConflictError('Your team already has a submission for this hackathon');
   }
 
+  // Auto-assign all system judges to submission
+  const User = (await import('../models/User.js')).default;
+  const systemJudges = await User.find({ role: 'judge' }).select('_id').lean();
+  const judgeIds = systemJudges.map((j) => j._id);
+
   const submission = await Submission.create({
     ...data,
     status: 'draft',
     locked: false,
+    assignedJudgeIds: judgeIds,
   });
 
   team.submissionId = submission._id;
@@ -92,8 +98,13 @@ export async function finalizeSubmit(submissionId, userId) {
     throw new ValidationError('All required fields (Project Name, Problem Statement, Solution, GitHub URL) must be filled');
   }
 
+  const User = (await import('../models/User.js')).default;
+  const systemJudges = await User.find({ role: 'judge' }).select('_id').lean();
+  const judgeIds = systemJudges.map((j) => j._id);
+
   submission.status = 'submitted';
   submission.submittedAt = new Date();
+  submission.assignedJudgeIds = Array.from(new Set([...(submission.assignedJudgeIds || []).map(id => id.toString()), ...judgeIds.map(id => id.toString())]));
   await submission.save();
 
   // Notify team members

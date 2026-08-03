@@ -70,7 +70,12 @@ export function HackathonWizardPage() {
           });
         }
       } catch (err) {
-        showToast('Failed to load hackathon data', 'error');
+        if (err.details && Array.isArray(err.details)) {
+          const msgs = err.details.map((d) => (typeof d === 'object' && d ? `${d.field || 'field'}: ${d.message}` : String(d)));
+          showToast(`Validation error: ${msgs.join('; ')}`, 'error');
+        } else {
+          showToast('Failed to load hackathon data', 'error');
+        }
       } finally {
         setFetching(false);
       }
