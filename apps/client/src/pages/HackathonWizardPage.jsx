@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import { useToast } from '../components/ui/Toast';
 import { Card } from '../components/ui/Card';
 import { Input, Textarea } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { HACKATHON_THEMES } from '@forge/shared';
+import { HACKATHON_THEMES, validateHackathonDates } from '@forge/shared';
 import { Check, ArrowRight, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 
 export function HackathonWizardPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const showToast = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(Boolean(id));
 
   const [formData, setFormData] = useState({
     title: '',
@@ -41,6 +43,41 @@ export function HackathonWizardPage() {
     ],
   });
 
+  useEffect(() => {
+    if (!id) return;
+    async function loadExistingHackathon() {
+      try {
+        const mineRes = await apiClient.get('/hackathons/mine');
+        const existing = mineRes.data.hackathons.find((h) => h._id === id || h.slug === id);
+        if (existing) {
+          setFormData({
+            title: existing.title || '',
+            description: existing.description || '',
+            theme: existing.theme || ['AI/ML'],
+            mode: existing.mode || 'online',
+            venue: existing.venue || '',
+            bannerUrl: existing.bannerUrl || '',
+            registrationDeadline: existing.registrationDeadline ? new Date(existing.registrationDeadline).toISOString().slice(0, 16) : '',
+            submissionStart: existing.submissionStart ? new Date(existing.submissionStart).toISOString().slice(0, 16) : '',
+            submissionDeadline: existing.submissionDeadline ? new Date(existing.submissionDeadline).toISOString().slice(0, 16) : '',
+            reviewDeadline: existing.reviewDeadline ? new Date(existing.reviewDeadline).toISOString().slice(0, 16) : '',
+            startDate: existing.startDate ? new Date(existing.startDate).toISOString().slice(0, 16) : '',
+            endDate: existing.endDate ? new Date(existing.endDate).toISOString().slice(0, 16) : '',
+            prizePool: existing.prizePool || '',
+            maxTeamSize: existing.maxTeamSize || 4,
+            rules: existing.rules || '',
+            judgingCriteria: existing.judgingCriteria?.length ? existing.judgingCriteria : formData.judgingCriteria,
+          });
+        }
+      } catch (err) {
+        showToast('Failed to load hackathon data', 'error');
+      } finally {
+        setFetching(false);
+      }
+    }
+    loadExistingHackathon();
+  }, [id]);
+
   const toggleThemeTag = (t) => {
     setFormData((prev) => ({
       ...prev,
@@ -48,31 +85,78 @@ export function HackathonWizardPage() {
     }));
   };
 
+  const getIsoPayload = () => {
+    const payload = {
+      ...formData,
+      registrationDeadline: new Date(formData.registrationDeadline).toISOString(),
+      submissionStart: new Date(formData.submissionStart).toISOString(),
+      submissionDeadline: new Date(formData.submissionDeadline).toISOString(),
+      reviewDeadline: new Date(formData.reviewDeadline).toISOString(),
+      startDate: new Date(formData.startDate).toISOString(),
+      endDate: new Date(formData.endDate).toISOString(),
+    };
+    // Strip empty optional string fields so Zod .url() doesn't reject ''
+    if (!payload.bannerUrl) delete payload.bannerUrl;
+    if (!payload.venue) delete payload.venue;
+    if (!payload.prizePool) delete payload.prizePool;
+    if (!payload.rules) delete payload.rules;
+    return payload;
+  };
+
   const handlePublish = async (e) => {
     e.preventDefault();
+
+    // Client-side date ordering check
+    const dateErrors = validateHackathonDates(formData);
+    if (dateErrors.length > 0) {
+      return showToast(dateErrors[0], 'error');
+    }
+
     setLoading(true);
     try {
-      // 1. Create draft
-      const draftRes = await apiClient.post('/hackathons', formData);
-      const hackathonId = draftRes.data._id;
+      const payload = getIsoPayload();
 
-      // 2. Publish draft
-      await apiClient.post(`/hackathons/${hackathonId}/publish`);
+      if (id) {
+        // Update existing hackathon
+        await apiClient.patch(`/hackathons/${id}`, payload);
+        await apiClient.post(`/hackathons/${id}/publish`);
+        showToast('Hackathon updated and published successfully!', 'success');
+      } else {
+        // 1. Create draft
+        const draftRes = await apiClient.post('/hackathons', payload);
+        const hackathonId = draftRes.data._id;
 
-      showToast('Hackathon created and published successfully!', 'success');
+        // 2. Publish draft
+        await apiClient.post(`/hackathons/${hackathonId}/publish`);
+        showToast('Hackathon created and published successfully!', 'success');
+      }
+
       navigate('/app/organizer');
     } catch (err) {
-      showToast(err.message || 'Failed to create hackathon', 'error');
+      // Surface Zod validation details if present
+      const details = err?.details;
+      if (Array.isArray(details) && details.length > 0) {
+        const msgs = details.map((d) => `${d.field}: ${d.message}`).join(' | ');
+        showToast(msgs, 'error');
+      } else {
+        showToast(err?.message || err?.error || (typeof err === 'string' ? err : 'Failed to publish hackathon'), 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  if (fetching) {
+    return <div className="p-12 text-center text-text-secondary">Loading hackathon details...</div>;
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Wizard Stepper Header */}
       <div className="bg-surface border border-border-subtle rounded-xl p-6">
-        <h1 className="text-2xl font-bold font-display text-text-primary mb-4">Create New Hackathon</h1>
+        <h1 className="text-2xl font-bold font-display text-text-primary mb-4">
+          {id ? 'Edit Hackathon' : 'Create New Hackathon'}
+        </h1>
         
         <div className="flex items-center justify-between text-xs font-semibold text-text-secondary">
           {['1. Basics', '2. Timeline', '3. Rubric & Rules', '4. Review & Publish'].map((label, index) => {
@@ -105,7 +189,7 @@ export function HackathonWizardPage() {
               required
             />
             <Textarea
-              label="Full Description"
+              label="Full Description (at least 20 characters)"
               placeholder="Describe the event goals, target audience, and tracks..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -282,3 +366,5 @@ export function HackathonWizardPage() {
     </div>
   );
 }
+
+export default HackathonWizardPage;
